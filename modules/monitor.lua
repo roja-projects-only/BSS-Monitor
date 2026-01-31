@@ -40,8 +40,8 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
         end
     end
     
-    -- Track new players
-    Players.PlayerAdded:Connect(function(player)
+    -- Track new players (store connection for cleanup)
+    local playerAddedConn = Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
             Monitor.PlayerJoinTimes[player.Name] = tick()
             Monitor.Log("PlayerJoin", player.Name .. " joined the server")
@@ -51,8 +51,8 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
         end
     end)
     
-    -- Clean up when players leave
-    Players.PlayerRemoving:Connect(function(player)
+    -- Clean up when players leave (store connection for cleanup)
+    local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
         -- Check if this was a pending ban - mark as verified
         if Monitor.PendingBans[player.Name] then
             Monitor.PendingBans[player.Name].verified = true
@@ -67,6 +67,12 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
             GUI.UpdateLog()
         end
     end)
+    
+    -- Store connections in _G for cleanup on re-execution
+    if _G.BSSMonitor and _G.BSSMonitor._connections then
+        table.insert(_G.BSSMonitor._connections, playerAddedConn)
+        table.insert(_G.BSSMonitor._connections, playerRemovingConn)
+    end
     
     return Monitor
 end

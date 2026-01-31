@@ -9,8 +9,43 @@
 
 local REPO_BASE = "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
 
--- Global variable setup
-_G.BSSMonitor = _G.BSSMonitor or {}
+-- ============================================
+-- CLEANUP PREVIOUS SESSION (if re-executed)
+-- ============================================
+if _G.BSSMonitor then
+    print("🐝 BSS Monitor: Previous session detected, cleaning up...")
+    
+    pcall(function()
+        -- Stop monitoring
+        if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.IsRunning then
+            _G.BSSMonitor.Monitor.Stop()
+        end
+    end)
+    
+    pcall(function()
+        -- Destroy GUI
+        if _G.BSSMonitor.GUI and _G.BSSMonitor.GUI.ScreenGui then
+            _G.BSSMonitor.GUI.ScreenGui:Destroy()
+        end
+    end)
+    
+    pcall(function()
+        -- Disconnect all connections if stored
+        if _G.BSSMonitor._connections then
+            for _, conn in pairs(_G.BSSMonitor._connections) do
+                if conn and typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
+            end
+        end
+    end)
+    
+    -- Clear old reference
+    _G.BSSMonitor = nil
+    
+    print("  ✓ Previous session cleaned up")
+    task.wait(0.5)
+end
 
 print("🐝 BSS Monitor Loading...")
 
@@ -67,6 +102,7 @@ _G.BSSMonitor = {
     Chat = Chat,
     GUI = GUI,
     Monitor = Monitor,
+    _connections = {}, -- Store connections for cleanup
     
     -- Convenience functions
     start = function() Monitor.Start() end,
@@ -80,11 +116,21 @@ _G.BSSMonitor = {
     showGui = function() GUI.Show() end,
     hideGui = function() GUI.Hide() end,
     testChat = function() return Chat.SendTestMessage() end,
-    testWebhook = function() return Webhook.Send(Config, "Test", "Webhook test", 3066993, {}) end
+    testWebhook = function() return Webhook.Send(Config, "Test", "Webhook test", 3066993, {}) end,
+    
+    -- Manual cleanup function
+    cleanup = function()
+        print("🐝 BSS Monitor: Manual cleanup...")
+        pcall(function() Monitor.Stop() end)
+        pcall(function() GUI.ScreenGui:Destroy() end)
+        _G.BSSMonitor = nil
+        print("  ✓ Cleaned up")
+    end
 }
 
 print("🐝 BSS Monitor Loaded!")
 print("Access: _G.BSSMonitor")
 print("DRY_RUN: " .. (Config.DRY_RUN and "ON" or "OFF"))
+print("Re-execute to reload, or use _G.BSSMonitor.cleanup()")
 
 return _G.BSSMonitor
