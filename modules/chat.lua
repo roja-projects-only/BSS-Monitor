@@ -7,194 +7,114 @@
 local Chat = {}
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TextChatService = game:GetService("TextChatService")
-local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Try to get chat channel
-local function getTextChannel()
-    local success, result = pcall(function()
-        return TextChatService:WaitForChild("TextChannels", 3):WaitForChild("RBXGeneral", 3)
-    end)
-    if success then
-        return result
-    end
-    return nil
-end
-
--- Try legacy chat remote
-local function getLegacyChatRemote()
-    local success, result = pcall(function()
-        return ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents", 3):WaitForChild("SayMessageRequest", 3)
-    end)
-    if success then
-        return result
-    end
-    return nil
-end
-
--- METHOD 1: Fire Player.Chatted event directly (exploit-specific, most reliable for commands)
-local function sendViaChattedEvent(message)
-    -- This fires the Chatted event which servers listen to for commands
-    if firesignal then
-        local success = pcall(function()
-            firesignal(LocalPlayer.Chatted, message)
-        end)
-        if success then
-            return true
-        end
-    end
+-- Get the chat input TextBox from CoreGui
+local function getChatInputBox()
+    local chatInput = nil
     
-    -- Alternative: use fireclickdetector pattern
-    if fireproximityprompt then
-        -- Some executors support this
-    end
-    
-    return false
-end
-
--- METHOD 2: Legacy chat remote (works on older games)
-local function sendViaLegacyChat(message)
-    local legacyRemote = getLegacyChatRemote()
-    if legacyRemote then
-        local success, err = pcall(function()
-            legacyRemote:FireServer(message, "All")
-        end)
-        return success, "LegacyChat"
-    end
-    return false, "No legacy remote"
-end
-
--- METHOD 3: TextChatService modern chat
-local function sendViaTextChatService(message)
-    local textChannel = getTextChannel()
-    if textChannel then
-        local success, err = pcall(function()
-            textChannel:SendAsync(message)
-        end)
-        return success, "TextChatService"
-    end
-    return false, "No TextChannel"
-end
-
--- METHOD 4: Use StarterGui SetCore
-local function sendViaSetCore(message)
-    local success = pcall(function()
-        StarterGui:SetCore("ChatMakeSystemMessage", {
-            Text = "[You]: " .. message,
-            Color = Color3.new(1, 1, 1),
-            Font = Enum.Font.SourceSansBold,
-            TextSize = 18
-        })
-    end)
-    return success
-end
-
--- METHOD 5: Simulate chat bar input
-local function sendViaChatBar(message)
-    local success = pcall(function()
-        -- Try to find and use the chat bar directly
-        local chatGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not chatGui then return false end
-        
-        -- Look for TextChatService input
-        local chatInputBar = chatGui:FindFirstChild("ExperienceChat")
-        if chatInputBar then
-            local chatInput = chatInputBar:FindFirstChild("chatInputBar", true)
-            if chatInput and chatInput:IsA("TextBox") then
-                chatInput.Text = message
-                chatInput:CaptureFocus()
-                task.wait(0.05)
-                chatInput:ReleaseFocus(true)
-                return true
-            end
-        end
-        
-        -- Legacy chat bar
-        local chat = chatGui:FindFirstChild("Chat")
-        if chat then
-            local frame = chat:FindFirstChild("Frame")
-            if frame then
-                local chatBarParent = frame:FindFirstChild("ChatBarParentFrame")
-                if chatBarParent then
-                    local chatBar = chatBarParent:FindFirstChild("Frame")
-                    if chatBar then
-                        local boxFrame = chatBar:FindFirstChild("BoxFrame")
-                        if boxFrame then
-                            local chatBox = boxFrame:FindFirstChild("ChatBar")
-                            if chatBox then
-                                chatBox.Text = message
-                                chatBox:CaptureFocus()
-                                task.wait(0.05)
-                                chatBox:ReleaseFocus(true)
-                                return true
-                            end
-                        end
-                    end
+    -- Direct path to ExperienceChat TextBox
+    pcall(function()
+        local expChat = CoreGui:FindFirstChild("ExperienceChat")
+        if expChat then
+            for _, desc in pairs(expChat:GetDescendants()) do
+                if desc:IsA("TextBox") and desc.Name == "TextBox" then
+                    chatInput = desc
+                    break
                 end
             end
         end
     end)
-    return success
+    
+    return chatInput
 end
 
--- METHOD 6: Fire using getconnections (exploit-specific)
-local function sendViaGetConnections(message)
-    if not getconnections then
-        return false
+-- Send message via VirtualInputManager (simulates real typing + Enter)
+local function sendViaVirtualInput(message)
+    local chatInput = getChatInputBox()
+    if not chatInput then
+        return false, "Chat input not found"
     end
     
-    local success = pcall(function()
-        for _, connection in pairs(getconnections(LocalPlayer.Chatted)) do
-            if connection.Function then
-                connection.Function(message)
-            end
-        end
+    local success, err = pcall(function()
+        -- Focus the chat box
+        chatInput:CaptureFocus()
+        task.wait(0.1)
+        
+        -- Set the message text
+        chatInput.Text = message
+        task.wait(0.1)
+        
+        -- Simulate pressing Enter key
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
     end)
-    return success
+    
+    return success, err
+end
+
+-- Backup method: CaptureFocus + ReleaseFocus
+local function sendViaReleaseFocus(message)
+    local chatInput = getChatInputBox()
+    if not chatInput then
+        return false, "Chat input not found"
+    end
+    
+    local success, err = pcall(function()
+        chatInput:CaptureFocus()
+        task.wait(0.1)
+        chatInput.Text = message
+        task.wait(0.1)
+        chatInput:ReleaseFocus(true) -- true = enterPressed
+    end)
+    
+    return success, err
+end
+
+-- Backup method: firesignal on FocusLost
+local function sendViaFireSignal(message)
+    if not firesignal then
+        return false, "firesignal not available"
+    end
+    
+    local chatInput = getChatInputBox()
+    if not chatInput then
+        return false, "Chat input not found"
+    end
+    
+    local success, err = pcall(function()
+        chatInput.Text = message
+        firesignal(chatInput.FocusLost, true)
+    end)
+    
+    return success, err
 end
 
 -- Send a chat message (tries multiple methods)
 function Chat.SendMessage(message)
-    local methods = {}
-    
-    -- Method 1: Fire Chatted event directly (best for commands)
-    local chattedSuccess = sendViaChattedEvent(message)
-    if chattedSuccess then
-        table.insert(methods, "Chatted")
+    -- Method 1: VirtualInputManager (most reliable)
+    local success1, err1 = sendViaVirtualInput(message)
+    if success1 then
+        return true, "VirtualInputManager"
     end
     
-    -- Method 2: getconnections
-    local connectionsSuccess = sendViaGetConnections(message)
-    if connectionsSuccess then
-        table.insert(methods, "Connections")
+    -- Method 2: ReleaseFocus
+    local success2, err2 = sendViaReleaseFocus(message)
+    if success2 then
+        return true, "ReleaseFocus"
     end
     
-    -- Method 3: Legacy chat 
-    local legacySuccess = sendViaLegacyChat(message)
-    if legacySuccess then
-        table.insert(methods, "LegacyChat")
+    -- Method 3: firesignal
+    local success3, err3 = sendViaFireSignal(message)
+    if success3 then
+        return true, "FireSignal"
     end
     
-    -- Method 4: TextChatService
-    local textSuccess = sendViaTextChatService(message)
-    if textSuccess then
-        table.insert(methods, "TextChatService")
-    end
-    
-    -- Method 5: ChatBar simulation
-    local chatBarSuccess = sendViaChatBar(message)
-    if chatBarSuccess then
-        table.insert(methods, "ChatBar")
-    end
-    
-    if #methods > 0 then
-        return true, table.concat(methods, "+")
-    end
-    
-    return false, "All chat methods failed"
+    return false, "All methods failed: " .. tostring(err1)
 end
 
 -- Send ban command
@@ -208,38 +128,13 @@ function Chat.SendTestMessage()
     return Chat.SendMessage("BSS Monitor: Chat test!")
 end
 
--- Check what chat methods are available
-function Chat.GetAvailableMethods()
-    local available = {}
-    
-    if firesignal then
-        table.insert(available, "firesignal")
-    end
-    
-    if getconnections then
-        table.insert(available, "getconnections")
-    end
-    
-    local legacyRemote = getLegacyChatRemote()
-    if legacyRemote then
-        table.insert(available, "LegacyChat")
-    end
-    
-    local textChannel = getTextChannel()
-    if textChannel then
-        table.insert(available, "TextChatService")
-    end
-    
-    return available
-end
-
 -- Check if chat is available
 function Chat.IsAvailable()
-    local methods = Chat.GetAvailableMethods()
-    if #methods > 0 then
-        return true, table.concat(methods, ", ")
+    local chatInput = getChatInputBox()
+    if chatInput then
+        return true, "CoreGui.ExperienceChat"
     end
-    return false, "No chat methods available"
+    return false, "Chat input not found"
 end
 
 return Chat
