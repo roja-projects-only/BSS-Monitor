@@ -35,71 +35,27 @@ local function getLegacyChatRemote()
     return nil
 end
 
--- Method: Use StarterGui SetCore to chat (most reliable for commands)
-local function sendViaSetCore(message)
-    local success, err = pcall(function()
-        StarterGui:SetCore("ChatMakeSystemMessage", {
-            Text = "",
-            Color = Color3.new(1, 1, 1),
-            Font = Enum.Font.SourceSansBold,
-            TextSize = 18
-        })
-    end)
-    
-    -- The actual chat send via SetCore SendChatMessage
-    local chatSuccess = pcall(function()
-        StarterGui:SetCore("SendChatMessage", message)
-    end)
-    
-    return chatSuccess
-end
-
--- Method: Fire the chat bar directly (simulates typing and sending)
-local function sendViaChatBar(message)
-    local success = pcall(function()
-        local chatGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not chatGui then return false end
-        
-        local chat = chatGui:FindFirstChild("Chat")
-        if not chat then return false end
-        
-        local frame = chat:FindFirstChild("Frame")
-        if not frame then return false end
-        
-        local chatBarParent = frame:FindFirstChild("ChatBarParentFrame")
-        if not chatBarParent then return false end
-        
-        local chatBar = chatBarParent:FindFirstChild("Frame")
-        if not chatBar then return false end
-        
-        local boxFrame = chatBar:FindFirstChild("BoxFrame")
-        if not boxFrame then return false end
-        
-        local chatBox = boxFrame:FindFirstChild("ChatBar")
-        if chatBox then
-            chatBox.Text = message
-            chatBox:CaptureFocus()
-            task.wait(0.05)
-            chatBox:ReleaseFocus(true)
+-- METHOD 1: Fire Player.Chatted event directly (exploit-specific, most reliable for commands)
+local function sendViaChattedEvent(message)
+    -- This fires the Chatted event which servers listen to for commands
+    if firesignal then
+        local success = pcall(function()
+            firesignal(LocalPlayer.Chatted, message)
+        end)
+        if success then
             return true
         end
-    end)
-    return success
-end
-
--- Method: TextChatService modern chat
-local function sendViaTextChatService(message)
-    local textChannel = getTextChannel()
-    if textChannel then
-        local success, err = pcall(function()
-            textChannel:SendAsync(message)
-        end)
-        return success, "TextChatService"
     end
-    return false, "No TextChannel"
+    
+    -- Alternative: use fireclickdetector pattern
+    if fireproximityprompt then
+        -- Some executors support this
+    end
+    
+    return false
 end
 
--- Method: Legacy chat system
+-- METHOD 2: Legacy chat remote (works on older games)
 local function sendViaLegacyChat(message)
     local legacyRemote = getLegacyChatRemote()
     if legacyRemote then
@@ -111,76 +67,131 @@ local function sendViaLegacyChat(message)
     return false, "No legacy remote"
 end
 
--- Method: Use firesignal if available (exploit-specific)
-local function sendViaFireSignal(message)
-    if not firesignal then
-        return false, "firesignal not available"
+-- METHOD 3: TextChatService modern chat
+local function sendViaTextChatService(message)
+    local textChannel = getTextChannel()
+    if textChannel then
+        local success, err = pcall(function()
+            textChannel:SendAsync(message)
+        end)
+        return success, "TextChatService"
     end
-    
+    return false, "No TextChannel"
+end
+
+-- METHOD 4: Use StarterGui SetCore
+local function sendViaSetCore(message)
     local success = pcall(function()
-        local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        if chatEvents then
-            local sayRequest = chatEvents:FindFirstChild("SayMessageRequest")
-            if sayRequest then
-                firesignal(sayRequest.OnClientEvent, message, "All")
+        StarterGui:SetCore("ChatMakeSystemMessage", {
+            Text = "[You]: " .. message,
+            Color = Color3.new(1, 1, 1),
+            Font = Enum.Font.SourceSansBold,
+            TextSize = 18
+        })
+    end)
+    return success
+end
+
+-- METHOD 5: Simulate chat bar input
+local function sendViaChatBar(message)
+    local success = pcall(function()
+        -- Try to find and use the chat bar directly
+        local chatGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not chatGui then return false end
+        
+        -- Look for TextChatService input
+        local chatInputBar = chatGui:FindFirstChild("ExperienceChat")
+        if chatInputBar then
+            local chatInput = chatInputBar:FindFirstChild("chatInputBar", true)
+            if chatInput and chatInput:IsA("TextBox") then
+                chatInput.Text = message
+                chatInput:CaptureFocus()
+                task.wait(0.05)
+                chatInput:ReleaseFocus(true)
                 return true
             end
         end
+        
+        -- Legacy chat bar
+        local chat = chatGui:FindFirstChild("Chat")
+        if chat then
+            local frame = chat:FindFirstChild("Frame")
+            if frame then
+                local chatBarParent = frame:FindFirstChild("ChatBarParentFrame")
+                if chatBarParent then
+                    local chatBar = chatBarParent:FindFirstChild("Frame")
+                    if chatBar then
+                        local boxFrame = chatBar:FindFirstChild("BoxFrame")
+                        if boxFrame then
+                            local chatBox = boxFrame:FindFirstChild("ChatBar")
+                            if chatBox then
+                                chatBox.Text = message
+                                chatBox:CaptureFocus()
+                                task.wait(0.05)
+                                chatBox:ReleaseFocus(true)
+                                return true
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end)
-    return success, "FireSignal"
+    return success
 end
 
--- Method: Use hookmetamethod/getnamecallmethod if available
-local function sendViaHook(message)
-    if not hookmetamethod then
-        return false, "hookmetamethod not available"
+-- METHOD 6: Fire using getconnections (exploit-specific)
+local function sendViaGetConnections(message)
+    if not getconnections then
+        return false
     end
     
     local success = pcall(function()
-        local legacyRemote = getLegacyChatRemote()
-        if legacyRemote then
-            legacyRemote:FireServer(message, "All")
+        for _, connection in pairs(getconnections(LocalPlayer.Chatted)) do
+            if connection.Function then
+                connection.Function(message)
+            end
         end
     end)
-    return success, "Hook"
+    return success
 end
 
 -- Send a chat message (tries multiple methods)
 function Chat.SendMessage(message)
-    -- Method 1: SetCore (most reliable for admin commands)
-    local setcoreSuccess = sendViaSetCore(message)
-    if setcoreSuccess then
-        return true, "SetCore"
+    local methods = {}
+    
+    -- Method 1: Fire Chatted event directly (best for commands)
+    local chattedSuccess = sendViaChattedEvent(message)
+    if chattedSuccess then
+        table.insert(methods, "Chatted")
     end
     
-    -- Method 2: Chat bar simulation
+    -- Method 2: getconnections
+    local connectionsSuccess = sendViaGetConnections(message)
+    if connectionsSuccess then
+        table.insert(methods, "Connections")
+    end
+    
+    -- Method 3: Legacy chat 
+    local legacySuccess = sendViaLegacyChat(message)
+    if legacySuccess then
+        table.insert(methods, "LegacyChat")
+    end
+    
+    -- Method 4: TextChatService
+    local textSuccess = sendViaTextChatService(message)
+    if textSuccess then
+        table.insert(methods, "TextChatService")
+    end
+    
+    -- Method 5: ChatBar simulation
     local chatBarSuccess = sendViaChatBar(message)
     if chatBarSuccess then
-        return true, "ChatBar"
+        table.insert(methods, "ChatBar")
     end
     
-    -- Method 3: Legacy chat system (most compatible)
-    local legacySuccess, legacyMethod = sendViaLegacyChat(message)
-    if legacySuccess then
-        return true, legacyMethod
-    end
-    
-    -- Method 4: TextChatService modern
-    local textSuccess, textMethod = sendViaTextChatService(message)
-    if textSuccess then
-        return true, textMethod
-    end
-    
-    -- Method 5: FireSignal (exploit-specific)
-    local fireSuccess, fireMethod = sendViaFireSignal(message)
-    if fireSuccess then
-        return true, fireMethod
-    end
-    
-    -- Method 6: Hook method (exploit-specific)
-    local hookSuccess, hookMethod = sendViaHook(message)
-    if hookSuccess then
-        return true, hookMethod
+    if #methods > 0 then
+        return true, table.concat(methods, "+")
     end
     
     return false, "All chat methods failed"
@@ -194,30 +205,41 @@ end
 
 -- Send a regular message (for testing)
 function Chat.SendTestMessage()
-    return Chat.SendMessage("BSS Monitor: Chat test successful!")
+    return Chat.SendMessage("BSS Monitor: Chat test!")
 end
 
--- Check if chat is available
-function Chat.IsAvailable()
-    -- Check SetCore
-    local setcoreAvailable = pcall(function()
-        return StarterGui:GetCore("ChatWindowPosition")
-    end)
-    if setcoreAvailable then
-        return true, "SetCore"
+-- Check what chat methods are available
+function Chat.GetAvailableMethods()
+    local available = {}
+    
+    if firesignal then
+        table.insert(available, "firesignal")
     end
     
-    local textChannel = getTextChannel()
-    if textChannel then
-        return true, "TextChatService"
+    if getconnections then
+        table.insert(available, "getconnections")
     end
     
     local legacyRemote = getLegacyChatRemote()
     if legacyRemote then
-        return true, "LegacyChat"
+        table.insert(available, "LegacyChat")
     end
     
-    return false, "No chat available"
+    local textChannel = getTextChannel()
+    if textChannel then
+        table.insert(available, "TextChatService")
+    end
+    
+    return available
+end
+
+-- Check if chat is available
+function Chat.IsAvailable()
+    local methods = Chat.GetAvailableMethods()
+    if #methods > 0 then
+        return true, table.concat(methods, ", ")
+    end
+    return false, "No chat methods available"
 end
 
 return Chat
