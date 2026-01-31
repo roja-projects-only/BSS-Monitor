@@ -25,6 +25,7 @@
 ]]
 
 local REPO_BASE = "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
+local CACHE_BUST = "?v=" .. tostring(os.time())
 
 -- Check for custom config
 local customConfig = _G.BSSMonitorConfig
@@ -36,7 +37,7 @@ print("")
 
 -- Load modules function
 local function loadModule(name)
-    local url = REPO_BASE .. "modules/" .. name .. ".lua"
+    local url = REPO_BASE .. "modules/" .. name .. ".lua" .. CACHE_BUST
     local success, result = pcall(function()
         return loadstring(game:HttpGet(url))()
     end)
