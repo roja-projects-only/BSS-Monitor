@@ -38,15 +38,35 @@ print("")
 -- Load modules function
 local function loadModule(name)
     local url = REPO_BASE .. "modules/" .. name .. ".lua" .. CACHE_BUST
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
+    print("  Loading: " .. name .. " from " .. url)
+    
+    local httpSuccess, code = pcall(function()
+        return game:HttpGet(url)
     end)
     
-    if success then
+    if not httpSuccess then
+        warn("  ✗ " .. name .. " (HTTP failed): " .. tostring(code))
+        return nil
+    end
+    
+    print("    Got " .. #code .. " bytes")
+    
+    local loadSuccess, loadedFunc = pcall(function()
+        return loadstring(code, name)
+    end)
+    
+    if not loadSuccess or not loadedFunc then
+        warn("  ✗ " .. name .. " (loadstring failed): " .. tostring(loadedFunc))
+        return nil
+    end
+    
+    local runSuccess, result = pcall(loadedFunc)
+    
+    if runSuccess then
         print("  ✓ " .. name)
         return result
     else
-        warn("  ✗ " .. name .. ": " .. tostring(result))
+        warn("  ✗ " .. name .. " (runtime error): " .. tostring(result))
         return nil
     end
 end

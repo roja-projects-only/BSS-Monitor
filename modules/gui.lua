@@ -2,7 +2,10 @@
     BSS Monitor - GUI Module
     Compatible with Seliware, KRNL, Wave executors
     https://github.com/roja-projects-only/BSS-Monitor
+    Version: 2.0
 ]]
+
+print("  [GUI] Module loading v2.0")
 
 local GUI = {}
 GUI.ScreenGui = nil
