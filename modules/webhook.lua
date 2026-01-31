@@ -177,4 +177,66 @@ function Webhook.SendPlayerPassedNotification(config, playerName, hiveData, chec
     return Webhook.Send(config, "✅ Player Passed Check", string.format("**%s** meets requirements.", playerName), 3066993, fields)
 end
 
+function Webhook.SendBanFailedNotification(config, playerName, reason, attempts)
+    local fields = {
+        {
+            name = "Player",
+            value = playerName,
+            inline = true
+        },
+        {
+            name = "Reason",
+            value = reason or "Unknown",
+            inline = true
+        },
+        {
+            name = "Attempts",
+            value = tostring(attempts or 1),
+            inline = true
+        },
+        {
+            name = "Status",
+            value = "❌ Player still in server",
+            inline = false
+        }
+    }
+    
+    local title = "⚠️ Ban Failed - Player Still In Server"
+    local description = string.format("**%s** could not be banned after %d attempts.\nThe player is still in the server.", playerName, attempts or 1)
+    local color = 16744448 -- Orange-red
+    
+    return Webhook.Send(config, title, description, color, fields)
+end
+
+function Webhook.SendBanVerifiedNotification(config, playerName, reason, attempts)
+    local fields = {
+        {
+            name = "Player",
+            value = playerName,
+            inline = true
+        },
+        {
+            name = "Reason",
+            value = reason or "Unknown",
+            inline = true
+        },
+        {
+            name = "Attempts",
+            value = tostring(attempts or 1),
+            inline = true
+        },
+        {
+            name = "Status",
+            value = "✅ Player has left the server",
+            inline = false
+        }
+    }
+    
+    local title = "✅ Ban Verified - Player Removed"
+    local description = string.format("**%s** has been successfully removed from the server.", playerName)
+    local color = 3066993 -- Green
+    
+    return Webhook.Send(config, title, description, color, fields)
+end
+
 return Webhook

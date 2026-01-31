@@ -573,21 +573,51 @@ function GUI.UpdateBannedList(bannedPlayers)
                 local entry = Instance.new("Frame")
                 entry.Name = playerName
                 entry.Size = UDim2.new(1, -4, 0, 20)
-                entry.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
                 entry.BorderSizePixel = 0
                 addCorner(entry, 4)
                 
+                -- Color based on verification status
+                local bgColor, textColor, statusIcon
+                if banData.dryRun then
+                    bgColor = Color3.fromRGB(60, 60, 30) -- Yellow-ish for dry run
+                    textColor = Colors.warning
+                    statusIcon = "⚠️"
+                elseif banData.verified then
+                    bgColor = Color3.fromRGB(30, 60, 30) -- Green for verified
+                    textColor = Colors.success
+                    statusIcon = "✅"
+                elseif banData.failed then
+                    bgColor = Color3.fromRGB(80, 30, 30) -- Dark red for failed
+                    textColor = Color3.fromRGB(255, 100, 100)
+                    statusIcon = "❌"
+                else
+                    bgColor = Color3.fromRGB(60, 50, 30) -- Orange for pending
+                    textColor = Colors.warning
+                    statusIcon = "⏳"
+                end
+                entry.BackgroundColor3 = bgColor
+                
                 local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(1, -8, 1, 0)
+                nameLabel.Size = UDim2.new(1, -24, 1, 0)
                 nameLabel.Position = UDim2.new(0, 6, 0, 0)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = playerName
-                nameLabel.TextColor3 = Colors.danger
+                nameLabel.TextColor3 = textColor
                 nameLabel.TextSize = 11
                 nameLabel.Font = Enum.Font.GothamMedium
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
                 nameLabel.Parent = entry
+                
+                -- Status indicator
+                local statusLabel = Instance.new("TextLabel")
+                statusLabel.Size = UDim2.new(0, 18, 1, 0)
+                statusLabel.Position = UDim2.new(1, -20, 0, 0)
+                statusLabel.BackgroundTransparency = 1
+                statusLabel.Text = statusIcon
+                statusLabel.TextSize = 10
+                statusLabel.Font = Enum.Font.Gotham
+                statusLabel.Parent = entry
                 
                 entry.Parent = GUI.BannedList
             end

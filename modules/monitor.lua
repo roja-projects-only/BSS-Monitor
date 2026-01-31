@@ -16,6 +16,7 @@ Monitor.BannedPlayers = {}      -- Track who we've already banned
 Monitor.CheckedPlayers = {}     -- Track who passed checks
 Monitor.ActionLog = {}          -- Log of actions taken
 Monitor.LastScanResults = {}    -- Last scan results
+Monitor.PendingBans = {}        -- Players waiting for ban verification
 
 -- Dependencies (set by Init)
 local Config = nil
@@ -52,8 +53,14 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
     
     -- Clean up when players leave
     Players.PlayerRemoving:Connect(function(player)
+        -- Check if this was a pending ban - mark as verified
+        if Monitor.PendingBans[player.Name] then
+            Monitor.PendingBans[player.Name].verified = true
+            Monitor.PendingBans[player.Name].leftAt = tick()
+            Monitor.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
+        end
+        
         Monitor.PlayerJoinTimes[player.Name] = nil
-        Monitor.BannedPlayers[player.Name] = nil
         Monitor.CheckedPlayers[player.Name] = nil
         Monitor.Log("PlayerLeave", player.Name .. " left the server")
         if GUI then
@@ -82,6 +89,10 @@ function Monitor.Log(actionType, message)
     local prefix = "[BSS Monitor]"
     if actionType == "Ban" then
         warn(prefix, "🚫", message)
+    elseif actionType == "BanVerified" then
+        warn(prefix, "✅🚫", message)
+    elseif actionType == "BanFailed" then
+        warn(prefix, "❌🚫", message)
     elseif actionType == "Pass" then
         print(prefix, "✅", message)
     elseif actionType == "Skip" then
@@ -91,6 +102,107 @@ function Monitor.Log(actionType, message)
     else
         print(prefix, message)
     end
+end
+
+-- Check if a player is in the server
+function Monitor.IsPlayerInServer(playerName)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name == playerName then
+            return true
+        end
+    end
+    return false
+end
+
+-- Execute ban with verification (waits to confirm player left)
+function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
+    maxRetries = maxRetries or 3
+    timeout = timeout or 10 -- seconds to wait for player to leave
+    
+    -- Check if player is even in server
+    if not Monitor.IsPlayerInServer(playerName) then
+        Monitor.Log("Ban", playerName .. " is not in server (already left or doesn't exist)")
+        return true, "Not in server"
+    end
+    
+    -- Mark as pending ban
+    Monitor.PendingBans[playerName] = {
+        startTime = tick(),
+        reason = reason,
+        attempts = 0,
+        verified = false
+    }
+    
+    for attempt = 1, maxRetries do
+        Monitor.PendingBans[playerName].attempts = attempt
+        
+        -- Send ban command
+        local success, method = Chat.SendBanCommand(playerName)
+        if success then
+            Monitor.Log("Ban", string.format("Ban command sent for %s (attempt %d/%d) via %s", 
+                playerName, attempt, maxRetries, method))
+        else
+            Monitor.Log("Error", "Failed to send ban command: " .. tostring(method))
+        end
+        
+        -- Wait and check if player left
+        local waitStart = tick()
+        while tick() - waitStart < timeout do
+            -- Check if verified via PlayerRemoving event
+            if Monitor.PendingBans[playerName] and Monitor.PendingBans[playerName].verified then
+                Monitor.BannedPlayers[playerName] = {
+                    time = tick(),
+                    reason = reason,
+                    verified = true,
+                    attempts = attempt
+                }
+                Monitor.PendingBans[playerName] = nil
+                return true, "Verified (player left)"
+            end
+            
+            -- Also directly check if player is still in server
+            if not Monitor.IsPlayerInServer(playerName) then
+                Monitor.BannedPlayers[playerName] = {
+                    time = tick(),
+                    reason = reason,
+                    verified = true,
+                    attempts = attempt
+                }
+                Monitor.PendingBans[playerName] = nil
+                Monitor.Log("BanVerified", "✅ " .. playerName .. " is no longer in server (ban successful)")
+                return true, "Verified (not in server)"
+            end
+            
+            task.wait(0.5)
+        end
+        
+        -- Player still in server after timeout
+        if attempt < maxRetries then
+            Monitor.Log("BanFailed", string.format("%s still in server after attempt %d, retrying...", 
+                playerName, attempt))
+        end
+    end
+    
+    -- All retries exhausted, player still in server
+    Monitor.Log("BanFailed", string.format("❌ Failed to ban %s after %d attempts - player still in server!", 
+        playerName, maxRetries))
+    
+    -- Mark as failed ban
+    Monitor.BannedPlayers[playerName] = {
+        time = tick(),
+        reason = reason,
+        verified = false,
+        attempts = maxRetries,
+        failed = true
+    }
+    Monitor.PendingBans[playerName] = nil
+    
+    -- Send failure webhook
+    if Webhook then
+        Webhook.SendBanFailedNotification(Config, playerName, reason, maxRetries)
+    end
+    
+    return false, "Player still in server after " .. maxRetries .. " attempts"
 end
 
 -- Check a single player
@@ -142,25 +254,39 @@ function Monitor.CheckPlayer(playerName, hiveData)
     else
         -- Player fails requirements - BAN
         Monitor.Log("Ban", playerName .. ": " .. checkResult.reason)
-        Monitor.BannedPlayers[playerName] = {
-            time = tick(),
-            reason = checkResult.reason,
-            details = checkResult.details
-        }
         
-        -- Send webhook
+        -- Send webhook first
         Webhook.SendBanNotification(Config, playerName, hiveData, checkResult)
         
-        -- Execute ban (unless dry run)
+        -- Execute ban with verification (unless dry run)
         if not Config.DRY_RUN then
-            local success, method = Chat.SendBanCommand(playerName)
-            if success then
-                Monitor.Log("Ban", "Ban command sent via " .. method)
-            else
-                Monitor.Log("Error", "Failed to send ban command: " .. method)
-            end
+            -- Run verification in a separate coroutine so it doesn't block
+            coroutine.wrap(function()
+                local success, verifyResult = Monitor.ExecuteBanWithVerification(
+                    playerName, 
+                    checkResult.reason, 
+                    3,  -- max retries
+                    10  -- timeout seconds
+                )
+                
+                if success then
+                    Monitor.Log("BanVerified", playerName .. ": " .. verifyResult)
+                else
+                    Monitor.Log("BanFailed", playerName .. ": " .. verifyResult)
+                end
+                
+                if GUI then
+                    GUI.UpdateDisplay(Monitor.LastScanResults, Monitor.CheckedPlayers, Monitor.BannedPlayers)
+                end
+            end)()
         else
             Monitor.Log("Ban", "[DRY RUN] Would send: /ban " .. playerName)
+            Monitor.BannedPlayers[playerName] = {
+                time = tick(),
+                reason = checkResult.reason,
+                details = checkResult.details,
+                dryRun = true
+            }
         end
         
         return false, checkResult.reason
@@ -299,25 +425,37 @@ function Monitor.ManualBan(playerName)
         return false, "Player is whitelisted"
     end
     
-    Monitor.BannedPlayers[playerName] = {
-        time = tick(),
-        reason = "Manual ban",
-        details = {}
-    }
-    
-    Monitor.Log("Ban", "Manual ban: " .. playerName)
+    Monitor.Log("Ban", "Manual ban initiated: " .. playerName)
     
     if not Config.DRY_RUN then
-        local success, method = Chat.SendBanCommand(playerName)
-        if success then
-            Monitor.Log("Ban", "Ban command sent via " .. method)
-            return true, "Banned"
-        else
-            Monitor.Log("Error", "Failed to send ban command: " .. method)
-            return false, method
-        end
+        -- Run verification in a separate coroutine
+        coroutine.wrap(function()
+            local success, verifyResult = Monitor.ExecuteBanWithVerification(
+                playerName, 
+                "Manual ban", 
+                3,  -- max retries
+                10  -- timeout seconds
+            )
+            
+            if success then
+                Monitor.Log("BanVerified", "Manual ban successful: " .. playerName .. " - " .. verifyResult)
+            else
+                Monitor.Log("BanFailed", "Manual ban failed: " .. playerName .. " - " .. verifyResult)
+            end
+            
+            if GUI then
+                GUI.UpdateDisplay(Monitor.LastScanResults, Monitor.CheckedPlayers, Monitor.BannedPlayers)
+            end
+        end)()
+        
+        return true, "Ban initiated (verifying...)"
     else
         Monitor.Log("Ban", "[DRY RUN] Would send: /ban " .. playerName)
+        Monitor.BannedPlayers[playerName] = {
+            time = tick(),
+            reason = "Manual ban",
+            dryRun = true
+        }
         return true, "DRY RUN"
     end
 end
