@@ -61,8 +61,8 @@ local Chat = loadModule("chat")
 local GUI = loadModule("gui")
 local Monitor = loadModule("monitor")
 
--- Validate critical modules
-if not Config or not Scanner or not Monitor or not GUI then
+-- Validate critical modules (GUI is optional)
+if not Config or not Scanner or not Monitor then
     error("❌ BSS Monitor: Critical module load failed!")
     return
 end
@@ -92,11 +92,13 @@ end
 print("")
 
 -- Initialize modules
-GUI.Init(Config, Monitor)
+if GUI then GUI.Init(Config, Monitor) end
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
--- Create GUI (always show minimal GUI)
-GUI.Create()
+-- Create GUI if enabled
+if Config.SHOW_GUI and GUI then
+    GUI.Create()
+end
 
 -- Initial scan after brief delay
 task.wait(1)
@@ -125,8 +127,8 @@ _G.BSSMonitor = {
     ban = function(name) return Monitor.ManualBan(name) end,
     whitelist = function(name) return Config.AddToWhitelist(name) end,
     unwhitelist = function(name) return Config.RemoveFromWhitelist(name) end,
-    showGui = function() GUI.Show() end,
-    hideGui = function() GUI.Hide() end,
+    showGui = function() if GUI then GUI.Show() end end,
+    hideGui = function() if GUI then GUI.Hide() end end,
     
     -- Test functions
     testChat = function() return Chat.SendTestMessage() end,
