@@ -141,16 +141,8 @@ _G.BSSMonitor = {
 print("═══════════════════════════════════════════")
 print("       🐝 BSS MONITOR READY!")
 print("═══════════════════════════════════════════")
-print("")
-print(" Access: _G.BSSMonitor")
-print("")
-print(" Commands:")
-print("   .start()   - Begin monitoring")
-print("   .stop()    - Stop monitoring")
-print("   .scan()    - Manual scan")
-print("   .ban('x')  - Ban player")
-print("")
 print(" DRY_RUN: " .. (Config.DRY_RUN and "ON" or "OFF"))
+print(" AUTO_START: " .. (Config.AUTO_START and "ON" or "OFF"))
 print("═══════════════════════════════════════════")
 
 return _G.BSSMonitor
