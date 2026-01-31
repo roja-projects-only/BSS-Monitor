@@ -1,16 +1,18 @@
 # 🐝 BSS Monitor
 
-Private server monitoring tool for **Bee Swarm Simulator**. Automatically monitors player hives and bans players who don't meet the level requirements.
+Private server monitoring tool for **Bee Swarm Simulator**. Automatically monitors player hives and kicks/bans players who don't meet the level requirements.
 
 ## Features
 
 - 🔍 **Hive Scanning** - Scans all player hives in the server
 - 📊 **Level Verification** - Checks if players meet the 80%+ Lv17 requirement
-- 🚫 **Auto-Ban** - Automatically sends `/ban <user>` command for non-compliant players
-- 🔔 **Discord Webhooks** - Get notifications when players are banned
+- 🚫 **Auto-Kick/Ban** - Automatically sends `/kick` or `/ban` command for non-compliant players
+- ✅ **Ban Verification** - Confirms player actually leaves server, retries up to 3 times
+- 🔔 **Discord Webhooks** - Get notifications when players are kicked/banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
-- 📱 **Optional GUI** - Player list and banned players display (disabled by default)
-- ✅ **Dry Run Mode** - Test the system without actually banning anyone
+- 📱 **Optional GUI** - Player list with status indicators
+- 🔄 **Auto-Cleanup** - Re-execute script anytime, automatically cleans up previous session
+- ✅ **Dry Run Mode** - Test the system without actually kicking anyone
 
 ## Installation
 
@@ -25,8 +27,9 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 ```lua
 _G.BSSMonitorConfig = {
     WEBHOOK_URL = "YOUR_DISCORD_WEBHOOK_URL",
-    DRY_RUN = false,           -- Set to false to actually ban
+    DRY_RUN = false,           -- Set to false to actually kick/ban
     AUTO_START = true,         -- Start monitoring immediately
+    USE_KICK = true,           -- Use /kick (true) or /ban (false)
     MINIMUM_LEVEL = 17,        -- Minimum bee level
     REQUIRED_PERCENT = 0.80,   -- 80% of bees must meet level
     GRACE_PERIOD = 120,        -- Seconds before checking new players
@@ -42,12 +45,13 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `REQUIRED_PERCENT` | 0.80 | Percentage of bees that must meet MINIMUM_LEVEL (0.80 = 80%) |
 | `MIN_BEES_REQUIRED` | 35 | Skip check if player has fewer bees (might be new) |
 | `CHECK_INTERVAL` | 30 | Seconds between automatic scans |
-| `GRACE_PERIOD` | 120 | Seconds to wait after player joins before checking |
+| `GRACE_PERIOD` | 20 | Seconds to wait after player joins before checking |
 | `BAN_COOLDOWN` | 5 | Seconds between ban commands |
 | `MAX_PLAYERS` | 6 | Max players in private server |
-| `DRY_RUN` | true | If true, logs but doesn't actually ban |
+| `DRY_RUN` | true | If true, logs but doesn't actually kick/ban |
 | `AUTO_START` | true | Start monitoring automatically on load |
 | `SHOW_GUI` | false | Show GUI (disabled by default for compatibility) |
+| `USE_KICK` | true | Use `/kick` instead of `/ban` (some servers only support kick) |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |
 
@@ -66,7 +70,7 @@ m.scan()               -- Run single scan cycle
 m.status()             -- Get current status
 
 -- Player Management
-m.ban("username")      -- Manually ban a player
+m.ban("username")      -- Manually kick/ban a player
 m.whitelist("name")    -- Add to whitelist
 m.unwhitelist("name")  -- Remove from whitelist
 
@@ -77,16 +81,49 @@ m.hideGui()            -- Hide the GUI
 -- Testing
 m.testChat()           -- Test chat functionality
 m.testWebhook()        -- Test webhook connection
+
+-- Session
+m.cleanup()            -- Manually cleanup and unload the script
 ```
+
+## Re-execution Support
+
+You can re-execute the script at any time! The monitor automatically:
+- Stops the previous monitoring loop
+- Destroys the old GUI
+- Disconnects all event handlers
+- Loads fresh modules
+
+Simply run the loadstring again to reload with updated settings.
+
+## Ban Verification
+
+When a player is kicked/banned, the monitor:
+1. Sends the `/kick` or `/ban` command
+2. Waits up to 10 seconds to confirm player left
+3. If still in server, retries up to 3 times
+4. Sends Discord notification on success or failure
+
+**GUI Status Indicators:**
+- ✅ Green = Verified (player left server)
+- ⏳ Orange = Pending verification
+- ❌ Red = Failed (player still in server)
+- ⚠️ Yellow = Dry run mode
 
 ## GUI Features (Optional)
 
 Enable with `SHOW_GUI = true` in config:
 
 - **Player Count** - Shows current players (X/6)
-- **Player List** - All players in server
-- **Banned List** - Players that were banned
-- **Status Indicator** - RUNNING / STOPPED
+- **Player List** - All players in server with hive status
+- **Banned List** - Players that were kicked/banned with verification status
+- **Status Indicator** - ACTIVE / PAUSED
+
+**Banned Player Status:**
+- ✅ Verified - Player successfully removed
+- ⏳ Pending - Waiting for verification
+- ❌ Failed - Could not remove player
+- ⚠️ Dry Run - Would have been removed
 
 ## Whitelist
 
@@ -123,33 +160,38 @@ _G.BSSMonitorConfig = {
 
 This means the script will:
 - ✅ Scan players and check requirements
-- ✅ Log who would be banned
+- ✅ Log who would be kicked/banned
 - ✅ Send webhook notifications (with [DRY RUN] prefix)
-- ❌ NOT actually send ban commands
+- ❌ NOT actually send kick/ban commands
 
-To enable real bans, set `DRY_RUN = false` in your config.
+To enable real kicks, set `DRY_RUN = false` in your config.
+
+### Kick vs Ban
+
+By default, `USE_KICK = true` which uses `/kick` instead of `/ban`. This is more reliable on most servers. Set `USE_KICK = false` to use `/ban` if your server supports it.
 
 ## File Structure
 
 ```
 BSS-Monitor/
 ├── loader.lua          # Loadstring entry point
-├── main.lua            # Main orchestrator
+├── main.lua            # Main orchestrator (with auto-cleanup)
 ├── modules/
 │   ├── config.lua      # Configuration settings
 │   ├── scanner.lua     # Hive scanning logic
-│   ├── monitor.lua     # Monitoring loop & player tracking
-│   ├── chat.lua        # Chat command sender
+│   ├── monitor.lua     # Monitoring loop & ban verification
+│   ├── chat.lua        # Chat command sender (VirtualInputManager)
 │   ├── webhook.lua     # Discord integration
 │   └── gui.lua         # User interface
+├── tests/              # Test scripts (gitignored)
 └── README.md
 ```
 
 ## Requirements
 
-- Roblox script executor (Synapse, KRNL, Fluxus, etc.)
-- Private server in Bee Swarm Simulator (with ban permissions)
-- HTTP requests enabled in executor
+- Roblox script executor with VirtualInputManager support (Seliware, Synapse, etc.)
+- Private server in Bee Swarm Simulator (with kick/ban permissions)
+- HTTP requests enabled in executor (for webhooks)
 
 ## License
 
