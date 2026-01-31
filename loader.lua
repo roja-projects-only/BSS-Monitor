@@ -61,9 +61,15 @@ local GUI = loadModule("gui")
 local Monitor = loadModule("monitor")
 
 -- Validate critical modules
-if not Config or not Scanner or not Monitor then
+if not Config or not Scanner or not Monitor or not GUI then
     error("❌ BSS Monitor: Critical module load failed!")
     return
+end
+
+-- Helper to mask webhook URL
+local function maskWebhook(url)
+    if not url or url == "" then return "Not set" end
+    return url:sub(1, 40) .. "..."
 end
 
 -- Apply custom config if provided
@@ -73,7 +79,11 @@ if customConfig then
     for key, value in pairs(customConfig) do
         if Config[key] ~= nil then
             Config[key] = value
-            print("  • " .. key .. " = " .. tostring(value))
+            if key == "WEBHOOK_URL" then
+                print("  • " .. key .. " = " .. maskWebhook(value))
+            else
+                print("  • " .. key .. " = " .. tostring(value))
+            end
         end
     end
 end
