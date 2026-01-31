@@ -121,6 +121,7 @@ function Monitor.IsPlayerInServer(playerName)
 end
 
 -- Execute ban with verification (waits to confirm player left)
+-- On mobile: copies to clipboard + prefills chat (user must send manually)
 function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
     maxRetries = maxRetries or 3
     timeout = timeout or 10 -- seconds to wait for player to leave
@@ -131,6 +132,62 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         return true, "Not in server"
     end
     
+    -- Determine if we're on mobile
+    local isMobile = Chat.IsMobile()
+    if Config.MOBILE_MODE ~= nil then
+        isMobile = Config.MOBILE_MODE
+    end
+    
+    -- MOBILE MODE
+    if isMobile then
+        local cmd = Config.USE_KICK and "/kick" or "/ban"
+        local command = cmd .. " " .. playerName
+        
+        Monitor.Log("Mobile", "📱 Mobile mode - preparing kick command for: " .. playerName)
+        
+        -- Copy to clipboard
+        if Config.MOBILE_CLIPBOARD then
+            Chat.CopyKickCommand(playerName)
+            Monitor.Log("Mobile", "📋 Command copied to clipboard: " .. command)
+        end
+        
+        -- Prefill chat
+        if Config.MOBILE_PREFILL then
+            Chat.PrefillKickCommand(playerName)
+            Monitor.Log("Mobile", "💬 Command prefilled in chat - PRESS SEND!")
+        end
+        
+        -- Play sound alert
+        if Config.MOBILE_SOUND then
+            pcall(function()
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://9125402735" -- Alert sound
+                sound.Volume = 1
+                sound.Parent = game:GetService("SoundService")
+                sound:Play()
+                task.delay(2, function() sound:Destroy() end)
+            end)
+        end
+        
+        -- Mark as pending manual action
+        Monitor.BannedPlayers[playerName] = {
+            time = tick(),
+            reason = reason,
+            mobileMode = true,
+            manualPending = true
+        }
+        
+        -- Send webhook notification
+        if Webhook then
+            task.spawn(function()
+                Webhook.SendBanNotification(playerName, reason, "⚠️ MOBILE - Manual send required!")
+            end)
+        end
+        
+        return true, "Mobile (clipboard + prefill)"
+    end
+    
+    -- DESKTOP MODE (auto-send with verification)
     -- Mark as pending ban
     Monitor.PendingBans[playerName] = {
         startTime = tick(),

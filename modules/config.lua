@@ -47,7 +47,13 @@ Config.DRY_RUN = true               -- If true, logs but doesn't actually ban (f
 Config.AUTO_START = true            -- If true, starts monitoring immediately on load
 Config.SHOW_GUI = false             -- If false, runs without GUI (headless mode)
 Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some servers only support kick)
-
+-- =============================================
+-- MOBILE SETTINGS (auto-detected, but can override)
+-- =============================================
+Config.MOBILE_MODE = nil            -- nil = auto-detect, true = force mobile, false = force desktop
+Config.MOBILE_CLIPBOARD = true      -- Copy kick command to clipboard on mobile
+Config.MOBILE_PREFILL = true        -- Pre-fill chat input on mobile (user sends manually)
+Config.MOBILE_SOUND = true          -- Play sound alert on mobile when kick needed
 -- =============================================
 -- HIVE GRID CONSTANTS
 -- =============================================
