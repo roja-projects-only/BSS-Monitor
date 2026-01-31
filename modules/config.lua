@@ -44,8 +44,8 @@ Config.WEBHOOK_URL = ""             -- Set your Discord webhook URL here
 -- BEHAVIOR SETTINGS
 -- =============================================
 Config.DRY_RUN = true               -- If true, logs but doesn't actually ban (for testing)
-Config.AUTO_START = true           -- If true, starts monitoring immediately on load
-Config.SHOW_GUI = false              -- If false, runs without GUI (headless mode)
+Config.AUTO_START = true            -- If true, starts monitoring immediately on load
+Config.SHOW_GUI = false             -- If false, runs without GUI (headless mode)
 
 -- =============================================
 -- HIVE GRID CONSTANTS

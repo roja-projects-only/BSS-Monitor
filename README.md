@@ -9,7 +9,7 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 - 🚫 **Auto-Ban** - Automatically sends `/ban <user>` command for non-compliant players
 - 🔔 **Discord Webhooks** - Get notifications when players are banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
-- � **Minimal GUI** - Compact, draggable interface (PC & Mobile)
+- 📱 **Optional GUI** - Player list and banned players display (disabled by default)
 - ✅ **Dry Run Mode** - Test the system without actually banning anyone
 
 ## Installation
@@ -47,6 +47,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `MAX_PLAYERS` | 6 | Max players in private server |
 | `DRY_RUN` | true | If true, logs but doesn't actually ban |
 | `AUTO_START` | true | Start monitoring automatically on load |
+| `SHOW_GUI` | false | Show GUI (disabled by default for compatibility) |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |
 
@@ -78,12 +79,14 @@ m.testChat()           -- Test chat functionality
 m.testWebhook()        -- Test webhook connection
 ```
 
-## GUI Features
+## GUI Features (Optional)
+
+Enable with `SHOW_GUI = true` in config:
 
 - **Player Count** - Shows current players (X/6)
+- **Player List** - All players in server
+- **Banned List** - Players that were banned
 - **Status Indicator** - RUNNING / STOPPED
-- **Play/Pause Button** - Start/stop monitoring
-- **Draggable** - Works on PC and Mobile
 
 ## Whitelist
 

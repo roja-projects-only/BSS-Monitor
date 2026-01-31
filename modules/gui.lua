@@ -14,45 +14,11 @@ GUI.BannedList = nil
 local Config = nil
 local Monitor = nil
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 
 function GUI.Init(config, monitor)
     Config = config
     Monitor = monitor
     return GUI
-end
-
--- Make frame draggable (works on PC and Mobile)
-local function makeDraggable(gui, handle)
-    local dragging = false
-    local dragInput, dragStart, startPos
-    
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = gui.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
 end
 
 function GUI.Create()
@@ -76,6 +42,7 @@ function GUI.Create()
     mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
+    mainFrame.Draggable = true
     mainFrame.Parent = screenGui
 
     local mainCorner = Instance.new("UICorner")
@@ -116,8 +83,6 @@ function GUI.Create()
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = titleBar
-
-    makeDraggable(mainFrame, titleBar)
 
     -- Player Count Section
     local countFrame = Instance.new("Frame")
