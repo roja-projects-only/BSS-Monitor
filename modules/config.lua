@@ -16,7 +16,7 @@ Config.MIN_BEES_REQUIRED = 35       -- Minimum bees to have (ignore if less, mig
 -- TIMING SETTINGS
 -- =============================================
 Config.CHECK_INTERVAL = 30          -- Seconds between scans
-Config.GRACE_PERIOD = 120           -- Seconds after join before checking (let hive load)
+Config.GRACE_PERIOD = 20            -- Seconds after join before checking (let hive load)
 Config.BAN_COOLDOWN = 5             -- Seconds between ban commands (avoid spam)
 
 -- =============================================
@@ -46,6 +46,7 @@ Config.WEBHOOK_URL = ""             -- Set your Discord webhook URL here
 Config.DRY_RUN = true               -- If true, logs but doesn't actually ban (for testing)
 Config.AUTO_START = true            -- If true, starts monitoring immediately on load
 Config.SHOW_GUI = false             -- If false, runs without GUI (headless mode)
+Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some servers only support kick)
 
 -- =============================================
 -- HIVE GRID CONSTANTS

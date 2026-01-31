@@ -142,13 +142,20 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
     for attempt = 1, maxRetries do
         Monitor.PendingBans[playerName].attempts = attempt
         
-        -- Send ban command
-        local success, method = Chat.SendBanCommand(playerName)
-        if success then
-            Monitor.Log("Ban", string.format("Ban command sent for %s (attempt %d/%d) via %s", 
-                playerName, attempt, maxRetries, method))
+        -- Send kick/ban command based on config
+        local success, method
+        if Config.USE_KICK then
+            success, method = Chat.SendKickCommand(playerName)
         else
-            Monitor.Log("Error", "Failed to send ban command: " .. tostring(method))
+            success, method = Chat.SendBanCommand(playerName)
+        end
+        
+        local cmdType = Config.USE_KICK and "Kick" or "Ban"
+        if success then
+            Monitor.Log("Ban", string.format("%s command sent for %s (attempt %d/%d) via %s", 
+                cmdType, playerName, attempt, maxRetries, method))
+        else
+            Monitor.Log("Error", "Failed to send " .. cmdType:lower() .. " command: " .. tostring(method))
         end
         
         -- Wait and check if player left
@@ -286,7 +293,8 @@ function Monitor.CheckPlayer(playerName, hiveData)
                 end
             end)()
         else
-            Monitor.Log("Ban", "[DRY RUN] Would send: /ban " .. playerName)
+            local cmd = Config.USE_KICK and "/kick" or "/ban"
+            Monitor.Log("Ban", "[DRY RUN] Would send: " .. cmd .. " " .. playerName)
             Monitor.BannedPlayers[playerName] = {
                 time = tick(),
                 reason = checkResult.reason,
@@ -456,7 +464,8 @@ function Monitor.ManualBan(playerName)
         
         return true, "Ban initiated (verifying...)"
     else
-        Monitor.Log("Ban", "[DRY RUN] Would send: /ban " .. playerName)
+        local cmd = Config.USE_KICK and "/kick" or "/ban"
+        Monitor.Log("Ban", "[DRY RUN] Would send: " .. cmd .. " " .. playerName)
         Monitor.BannedPlayers[playerName] = {
             time = tick(),
             reason = "Manual ban",

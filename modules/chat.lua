@@ -91,22 +91,22 @@ end
 
 -- Send a chat message (tries multiple methods)
 function Chat.SendMessage(message)
-    -- Method 1: ReleaseFocus (most reliable for commands)
-    local success1, err1 = sendViaReleaseFocus(message)
+    -- Method 1: VirtualInputManager (confirmed working)
+    local success1, err1 = sendViaVirtualInput(message)
     if success1 then
+        return true, "VirtualInputManager"
+    end
+    
+    -- Method 2: ReleaseFocus (backup)
+    local success2, err2 = sendViaReleaseFocus(message)
+    if success2 then
         return true, "ReleaseFocus"
     end
     
-    -- Method 2: firesignal on FocusLost
-    local success2, err2 = sendViaFireSignal(message)
-    if success2 then
-        return true, "FireSignal"
-    end
-    
-    -- Method 3: VirtualInputManager
-    local success3, err3 = sendViaVirtualInput(message)
+    -- Method 3: firesignal (last resort)
+    local success3, err3 = sendViaFireSignal(message)
     if success3 then
-        return true, "VirtualInputManager"
+        return true, "FireSignal"
     end
     
     return false, "All methods failed: " .. tostring(err1)
@@ -115,6 +115,12 @@ end
 -- Send ban command
 function Chat.SendBanCommand(username)
     local command = "/ban " .. username
+    return Chat.SendMessage(command)
+end
+
+-- Send kick command (use this if /ban doesn't work)
+function Chat.SendKickCommand(username)
+    local command = "/kick " .. username
     return Chat.SendMessage(command)
 end
 
