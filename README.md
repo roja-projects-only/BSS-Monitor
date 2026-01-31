@@ -46,7 +46,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `BAN_COOLDOWN` | 5 | Seconds between ban commands |
 | `MAX_PLAYERS` | 6 | Max players in private server |
 | `DRY_RUN` | true | If true, logs but doesn't actually ban |
-| `AUTO_START` | false | Start monitoring automatically on load |
+| `AUTO_START` | true | Start monitoring automatically on load |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |
 
