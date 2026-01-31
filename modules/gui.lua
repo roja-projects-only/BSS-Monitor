@@ -415,13 +415,11 @@ function GUI.ToggleCollapse()
     GUI.IsCollapsed = not GUI.IsCollapsed
     
     local targetHeight = GUI.IsCollapsed and COLLAPSED_HEIGHT or EXPANDED_HEIGHT
-    local targetY = GUI.IsCollapsed and -COLLAPSED_HEIGHT/2 or -EXPANDED_HEIGHT/2
     
-    -- Animate
+    -- Animate size only, keep current position
     local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local tween = TweenService:Create(GUI.MainFrame, tweenInfo, {
-        Size = UDim2.new(0, 240, 0, targetHeight),
-        Position = UDim2.new(0, 16, 0.5, targetY)
+        Size = UDim2.new(0, 240, 0, targetHeight)
     })
     tween:Play()
     
