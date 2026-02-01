@@ -24,14 +24,16 @@ local Scanner = nil
 local Webhook = nil
 local Chat = nil
 local GUI = nil
+local Bridge = nil
 
 -- Initialize with dependencies
-function Monitor.Init(config, scanner, webhook, chat, gui)
+function Monitor.Init(config, scanner, webhook, chat, gui, bridge)
     Config = config
     Scanner = scanner
     Webhook = webhook
     Chat = chat
     GUI = gui
+    Bridge = bridge
     
     -- Track existing players
     for _, player in ipairs(Players:GetPlayers()) do
@@ -99,6 +101,8 @@ function Monitor.Log(actionType, message)
         warn(prefix, "✅🚫", message)
     elseif actionType == "BanFailed" then
         warn(prefix, "❌🚫", message)
+    elseif actionType == "Bridge" then
+        print(prefix, "🌉", message)
     elseif actionType == "Pass" then
         print(prefix, "✅", message)
     elseif actionType == "Skip" then
@@ -140,6 +144,39 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
     
     -- MOBILE MODE
     if isMobile then
+        -- Try bridge first if available
+        if Bridge and Bridge.IsAvailable() then
+            Monitor.Log("Bridge", "🌉 Attempting bridge command for: " .. playerName)
+            
+            local cmdType = Config.USE_KICK and "kick" or "ban"
+            local success, error = Bridge.SendCommand(cmdType, playerName)
+            
+            if success then
+                Monitor.Log("Bridge", "✅ Bridge command sent successfully: " .. cmdType .. " " .. playerName)
+                
+                -- Mark as pending bridge action
+                Monitor.BannedPlayers[playerName] = {
+                    time = tick(),
+                    reason = reason,
+                    bridgeMode = true,
+                    bridgeSuccess = true
+                }
+                
+                -- Send webhook notification
+                if Webhook then
+                    task.spawn(function()
+                        Webhook.SendBanNotification(playerName, reason, "🌉 Bridge automation active")
+                    end)
+                end
+                
+                return true, "Bridge (automated)"
+            else
+                Monitor.Log("Bridge", "❌ Bridge failed: " .. error .. " - falling back to clipboard mode")
+                -- Fall through to clipboard mode
+            end
+        end
+        
+        -- Fallback to clipboard mode
         local cmd = Config.USE_KICK and "/kick" or "/ban"
         local command = cmd .. " " .. playerName
         
@@ -180,7 +217,8 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         -- Send webhook notification
         if Webhook then
             task.spawn(function()
-                Webhook.SendBanNotification(playerName, reason, "⚠️ MOBILE - Manual send required!")
+                local bridgeStatus = Bridge and Bridge.IsAvailable() and "Bridge failed - " or ""
+                Webhook.SendBanNotification(playerName, reason, "⚠️ MOBILE - " .. bridgeStatus .. "Manual send required!")
             end)
         end
         
