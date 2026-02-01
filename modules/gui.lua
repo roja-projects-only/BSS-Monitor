@@ -531,7 +531,7 @@ function GUI.UpdatePlayerList()
     pcall(function()
         if not GUI.PlayerList then return end
         for _, child in ipairs(GUI.PlayerList:GetChildren()) do
-            if child:IsA("Frame") then child:Destroy() end
+            if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
         end
         
         local localPlayer = Players.LocalPlayer
