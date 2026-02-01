@@ -54,6 +54,14 @@ Config.MOBILE_MODE = nil            -- nil = auto-detect, true = force mobile, f
 Config.MOBILE_CLIPBOARD = true      -- Copy kick command to clipboard on mobile
 Config.MOBILE_PREFILL = true        -- Pre-fill chat input on mobile (user sends manually)
 Config.MOBILE_SOUND = true          -- Play sound alert on mobile when kick needed
+
+-- =============================================
+-- BRIDGE SETTINGS (Mobile Automation Bridge)
+-- =============================================
+Config.BRIDGE_ENABLED = false       -- Enable bridge for mobile automation
+Config.BRIDGE_URL = ""              -- Bridge server URL (e.g., "https://your-app.vercel.app")
+Config.BRIDGE_API_KEY = ""          -- API key for authentication
+Config.BRIDGE_TIMEOUT = 5           -- Request timeout in seconds
 -- =============================================
 -- HIVE GRID CONSTANTS
 -- =============================================
