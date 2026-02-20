@@ -2,13 +2,18 @@ local GUI = {}
 GUI.ScreenGui = nil
 GUI.PlayerCountLabel = nil
 GUI.StatusLabel = nil
+GUI.StatusDot = nil
 GUI.PlayerList = nil
 GUI.BannedList = nil
 GUI.MainFrame = nil
 GUI.Content = nil
+GUI.Footer = nil
 GUI.ToggleButton = nil
+GUI.ToggleIcon = nil
 GUI.CollapseButton = nil
 GUI.TitleCountLabel = nil
+GUI.TitleFix = nil
+GUI.AccentLine = nil
 GUI.LastScanResults = {}
 GUI.CheckedPlayers = {}
 GUI.IsCollapsed = false
@@ -23,22 +28,51 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Sizes
-local EXPANDED_HEIGHT = 300
-local COLLAPSED_HEIGHT = 36
+local PANEL_WIDTH = 280
+local EXPANDED_HEIGHT = 340
+local COLLAPSED_HEIGHT = 38
+local PADDING = 10
+local ENTRY_HEIGHT = 26
+local ENTRY_GAP = 3
+local BANNED_ENTRY_HEIGHT = 22
+local INDICATOR_WIDTH = 3
 
--- Color palette
+-- Color palette (refined)
+local C = {
+    -- Backgrounds
+    bg        = Color3.fromRGB(16, 16, 20),
+    surface   = Color3.fromRGB(24, 24, 30),
+    surfaceHL = Color3.fromRGB(32, 32, 40),
+    elevated  = Color3.fromRGB(40, 40, 50),
+    -- Accent
+    accent    = Color3.fromRGB(255, 193, 7),
+    accentDim = Color3.fromRGB(180, 135, 5),
+    -- Text
+    text      = Color3.fromRGB(240, 240, 245),
+    textSec   = Color3.fromRGB(150, 150, 165),
+    textDim   = Color3.fromRGB(100, 100, 115),
+    -- Status
+    green     = Color3.fromRGB(72, 199, 116),
+    red       = Color3.fromRGB(237, 66, 69),
+    orange    = Color3.fromRGB(245, 166, 35),
+    blue      = Color3.fromRGB(88, 101, 242),
+    blueDim   = Color3.fromRGB(55, 65, 145),
+    -- Subtle tints (entry backgrounds)
+    greenBg   = Color3.fromRGB(22, 35, 28),
+    redBg     = Color3.fromRGB(38, 22, 22),
+    orangeBg  = Color3.fromRGB(38, 33, 18),
+    blueBg    = Color3.fromRGB(20, 25, 45),
+    verifiedBg = Color3.fromRGB(22, 38, 22),
+    failedBg  = Color3.fromRGB(50, 20, 20),
+    pendingBg = Color3.fromRGB(40, 35, 18),
+    dryRunBg  = Color3.fromRGB(40, 40, 22),
+}
+-- Legacy alias for backward compat
 local Colors = {
-    bg = Color3.fromRGB(18, 18, 22),
-    bgSecondary = Color3.fromRGB(28, 28, 35),
-    bgTertiary = Color3.fromRGB(38, 38, 48),
-    accent = Color3.fromRGB(255, 193, 7),
-    accentDark = Color3.fromRGB(200, 150, 0),
-    text = Color3.fromRGB(245, 245, 245),
-    textMuted = Color3.fromRGB(160, 160, 170),
-    success = Color3.fromRGB(76, 175, 80),
-    danger = Color3.fromRGB(244, 67, 54),
-    warning = Color3.fromRGB(255, 152, 0),
-    info = Color3.fromRGB(33, 150, 243),
+    bg = C.bg, bgSecondary = C.surface, bgTertiary = C.surfaceHL,
+    accent = C.accent, accentDark = C.accentDim,
+    text = C.text, textMuted = C.textSec,
+    success = C.green, danger = C.red, warning = C.orange, info = C.blue,
 }
 
 function GUI.Init(config, monitor, chat)
@@ -59,7 +93,7 @@ end
 -- Helper to create stroke
 local function addStroke(parent, color, thickness)
     local stroke = Instance.new("UIStroke")
-    stroke.Color = color or Colors.accent
+    stroke.Color = color or C.accent
     stroke.Thickness = thickness or 1
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = parent
@@ -73,26 +107,60 @@ local function addShadow(parent)
     shadow.AnchorPoint = Vector2.new(0.5, 0.5)
     shadow.BackgroundTransparency = 1
     shadow.Position = UDim2.new(0.5, 0, 0.5, 4)
-    shadow.Size = UDim2.new(1, 24, 1, 24)
+    shadow.Size = UDim2.new(1, 20, 1, 20)
     shadow.ZIndex = parent.ZIndex - 1
     shadow.Image = "rbxassetid://6014261993"
     shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.ImageTransparency = 0.5
+    shadow.ImageTransparency = 0.4
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(49, 49, 450, 450)
     shadow.Parent = parent
     return shadow
 end
 
--- Helper to create padding
-local function addPadding(parent, padding)
-    local p = Instance.new("UIPadding")
-    p.PaddingTop = UDim.new(0, padding or 8)
-    p.PaddingBottom = UDim.new(0, padding or 8)
-    p.PaddingLeft = UDim.new(0, padding or 8)
-    p.PaddingRight = UDim.new(0, padding or 8)
-    p.Parent = parent
-    return p
+-- Helper to create text label
+local function label(props)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.BorderSizePixel = 0
+    l.Text = props.text or ""
+    l.TextColor3 = props.color or C.text
+    l.TextSize = props.size or 12
+    l.Font = props.font or Enum.Font.Gotham
+    l.TextXAlignment = props.alignX or Enum.TextXAlignment.Left
+    l.TextYAlignment = props.alignY or Enum.TextYAlignment.Center
+    l.TextTruncate = props.truncate or Enum.TextTruncate.None
+    l.Size = props.sizeUDim or UDim2.new(1, 0, 1, 0)
+    l.Position = props.pos or UDim2.new(0, 0, 0, 0)
+    if props.parent then l.Parent = props.parent end
+    return l
+end
+
+-- Helper to create section header
+local function sectionHeader(parent, text, color, yPos)
+    local hdr = Instance.new("Frame")
+    hdr.Size = UDim2.new(1, 0, 0, 16)
+    hdr.Position = UDim2.new(0, 0, 0, yPos)
+    hdr.BackgroundTransparency = 1
+    hdr.Parent = parent
+
+    label({
+        text = text,
+        color = color or C.textDim,
+        size = 9,
+        font = Enum.Font.GothamBold,
+        parent = hdr,
+    })
+
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, -#text * 5 - 8, 0, 1)
+    line.Position = UDim2.new(0, #text * 5 + 8, 0.5, 0)
+    line.BackgroundColor3 = C.surfaceHL
+    line.BackgroundTransparency = 0.3
+    line.BorderSizePixel = 0
+    line.Parent = hdr
+
+    return hdr
 end
 
 function GUI.Create()
@@ -110,292 +178,338 @@ function GUI.Create()
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Mobile toggle button (bottom right)
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Name = "ToggleButton"
-    toggleButton.Size = UDim2.new(0, 44, 0, 44)
-    toggleButton.Position = UDim2.new(1, -56, 1, -56)
-    toggleButton.BackgroundColor3 = Colors.accent
-    toggleButton.BorderSizePixel = 0
-    toggleButton.Text = "🐝"
-    toggleButton.TextSize = 22
-    toggleButton.Font = Enum.Font.SourceSans
-    toggleButton.AutoButtonColor = true
-    toggleButton.Parent = screenGui
-    addCorner(toggleButton, 22)
-    addShadow(toggleButton)
-    GUI.ToggleButton = toggleButton
+    -- Toggle button (bottom-right pill)
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "Toggle"
+    toggleBtn.Size = UDim2.new(0, 48, 0, 48)
+    toggleBtn.Position = UDim2.new(1, -60, 1, -60)
+    toggleBtn.BackgroundColor3 = C.bg
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Text = ""
+    toggleBtn.AutoButtonColor = false
+    toggleBtn.Parent = screenGui
+    addCorner(toggleBtn, 24)
+    addStroke(toggleBtn, C.accent, 2)
+    GUI.ToggleButton = toggleBtn
 
-    -- Main container
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 240, 0, EXPANDED_HEIGHT)
-    mainFrame.Position = UDim2.new(0, 16, 0.5, -EXPANDED_HEIGHT/2)
-    mainFrame.BackgroundColor3 = Colors.bg
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Active = true
-    mainFrame.Draggable = true
-    mainFrame.ClipsDescendants = true
-    mainFrame.Parent = screenGui
-    addCorner(mainFrame, 10)
-    addStroke(mainFrame, Colors.accent, 2)
-    addShadow(mainFrame)
-    GUI.MainFrame = mainFrame
+    -- Bee icon inside toggle
+    local toggleIcon = Instance.new("TextLabel")
+    toggleIcon.Name = "Icon"
+    toggleIcon.Size = UDim2.new(1, 0, 1, 0)
+    toggleIcon.BackgroundTransparency = 1
+    toggleIcon.Text = "🐝"
+    toggleIcon.TextSize = 22
+    toggleIcon.Font = Enum.Font.SourceSans
+    toggleIcon.Parent = toggleBtn
+    GUI.ToggleIcon = toggleIcon
 
-    -- Title bar
+    -- Hover effect
+    toggleBtn.MouseEnter:Connect(function()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.15), { BackgroundColor3 = C.surface }):Play()
+    end)
+    toggleBtn.MouseLeave:Connect(function()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.15), { BackgroundColor3 = C.bg }):Play()
+    end)
+
+    -- Main panel
+    local panel = Instance.new("Frame")
+    panel.Name = "Panel"
+    panel.Size = UDim2.new(0, PANEL_WIDTH, 0, EXPANDED_HEIGHT)
+    panel.Position = UDim2.new(0, 14, 0.5, -EXPANDED_HEIGHT / 2)
+    panel.BackgroundColor3 = C.bg
+    panel.BorderSizePixel = 0
+    panel.Active = true
+    panel.Draggable = true
+    panel.ClipsDescendants = true
+    panel.Parent = screenGui
+    addCorner(panel, 12)
+    addStroke(panel, C.accent, 1.5)
+    addShadow(panel)
+    GUI.MainFrame = panel
+
+    -- Title bar (38px)
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 36)
-    titleBar.BackgroundColor3 = Colors.accent
+    titleBar.Size = UDim2.new(1, 0, 0, COLLAPSED_HEIGHT)
+    titleBar.BackgroundColor3 = C.surface
     titleBar.BorderSizePixel = 0
-    titleBar.Parent = mainFrame
+    titleBar.Parent = panel
 
     local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.CornerRadius = UDim.new(0, 12)
     titleCorner.Parent = titleBar
 
-    -- Fix bottom corners of title bar
     local titleFix = Instance.new("Frame")
-    titleFix.Name = "TitleFix"
-    titleFix.Size = UDim2.new(1, 0, 0, 12)
-    titleFix.Position = UDim2.new(0, 0, 1, -12)
-    titleFix.BackgroundColor3 = Colors.accent
+    titleFix.Name = "Fix"
+    titleFix.Size = UDim2.new(1, 0, 0, 14)
+    titleFix.Position = UDim2.new(0, 0, 1, -14)
+    titleFix.BackgroundColor3 = C.surface
     titleFix.BorderSizePixel = 0
     titleFix.Parent = titleBar
+    GUI.TitleFix = titleFix
 
-    local titleIcon = Instance.new("TextLabel")
-    titleIcon.Size = UDim2.new(0, 26, 1, 0)
-    titleIcon.Position = UDim2.new(0, 8, 0, 0)
-    titleIcon.BackgroundTransparency = 1
-    titleIcon.Text = "🐝"
-    titleIcon.TextSize = 16
-    titleIcon.Font = Enum.Font.SourceSans
-    titleIcon.Parent = titleBar
+    -- Accent line under title bar
+    local accentLine = Instance.new("Frame")
+    accentLine.Name = "AccentLine"
+    accentLine.Size = UDim2.new(1, 0, 0, 1)
+    accentLine.Position = UDim2.new(0, 0, 1, 0)
+    accentLine.BackgroundColor3 = C.accentDim
+    accentLine.BackgroundTransparency = 0.5
+    accentLine.BorderSizePixel = 0
+    accentLine.Parent = titleBar
+    GUI.AccentLine = accentLine
 
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "TitleLabel"
-    titleLabel.Size = UDim2.new(0, 100, 1, 0)
-    titleLabel.Position = UDim2.new(0, 32, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "BSS MONITOR"
-    titleLabel.TextColor3 = Colors.bg
-    titleLabel.TextSize = 13
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = titleBar
+    -- Status dot (green/red circle)
+    local statusDot = Instance.new("Frame")
+    statusDot.Name = "StatusDot"
+    statusDot.Size = UDim2.new(0, 8, 0, 8)
+    statusDot.Position = UDim2.new(0, PADDING, 0.5, -4)
+    statusDot.BackgroundColor3 = C.green
+    statusDot.BorderSizePixel = 0
+    statusDot.Parent = titleBar
+    addCorner(statusDot, 4)
+    GUI.StatusDot = statusDot
 
-    -- Player count in title (shown when collapsed or always visible)
-    local titleCountLabel = Instance.new("TextLabel")
-    titleCountLabel.Name = "TitleCountLabel"
-    titleCountLabel.Size = UDim2.new(0, 50, 1, 0)
-    titleCountLabel.Position = UDim2.new(0, 130, 0, 0)
-    titleCountLabel.BackgroundTransparency = 1
-    titleCountLabel.Text = "0/6"
-    titleCountLabel.TextColor3 = Colors.bg
-    titleCountLabel.TextSize = 13
-    titleCountLabel.Font = Enum.Font.GothamBold
-    titleCountLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleCountLabel.Parent = titleBar
-    GUI.TitleCountLabel = titleCountLabel
+    -- Title text
+    label({
+        text = "BSS Monitor",
+        color = C.text,
+        size = 13,
+        font = Enum.Font.GothamBold,
+        sizeUDim = UDim2.new(0, 120, 1, 0),
+        pos = UDim2.new(0, PADDING + 14, 0, 0),
+        parent = titleBar,
+    })
 
-    -- Collapse button (dropdown arrow)
-    local collapseButton = Instance.new("TextButton")
-    collapseButton.Name = "CollapseButton"
-    collapseButton.Size = UDim2.new(0, 30, 0, 30)
-    collapseButton.Position = UDim2.new(1, -34, 0, 3)
-    collapseButton.BackgroundColor3 = Colors.accentDark
-    collapseButton.BorderSizePixel = 0
-    collapseButton.Text = "▼"
-    collapseButton.TextColor3 = Colors.bg
-    collapseButton.TextSize = 12
-    collapseButton.Font = Enum.Font.GothamBold
-    collapseButton.AutoButtonColor = true
-    collapseButton.Parent = titleBar
-    addCorner(collapseButton, 6)
-    GUI.CollapseButton = collapseButton
+    -- Player count pill in title
+    local countPill = Instance.new("Frame")
+    countPill.Name = "CountPill"
+    countPill.Size = UDim2.new(0, 38, 0, 20)
+    countPill.Position = UDim2.new(0, PADDING + 138, 0.5, -10)
+    countPill.BackgroundColor3 = C.elevated
+    countPill.BorderSizePixel = 0
+    countPill.Parent = titleBar
+    addCorner(countPill, 10)
+
+    local countLabel = label({
+        text = #Players:GetPlayers() .. "/" .. (Config and Config.MAX_PLAYERS or 6),
+        color = C.accent,
+        size = 11,
+        font = Enum.Font.GothamBold,
+        alignX = Enum.TextXAlignment.Center,
+        parent = countPill,
+    })
+    GUI.TitleCountLabel = countLabel
+
+    -- Collapse button
+    local collapseBtn = Instance.new("TextButton")
+    collapseBtn.Name = "Collapse"
+    collapseBtn.Size = UDim2.new(0, 28, 0, 28)
+    collapseBtn.Position = UDim2.new(1, -PADDING - 28, 0.5, -14)
+    collapseBtn.BackgroundColor3 = C.elevated
+    collapseBtn.BorderSizePixel = 0
+    collapseBtn.Text = "v"
+    collapseBtn.TextColor3 = C.textSec
+    collapseBtn.TextSize = 12
+    collapseBtn.Font = Enum.Font.GothamBold
+    collapseBtn.AutoButtonColor = true
+    collapseBtn.Parent = titleBar
+    addCorner(collapseBtn, 6)
+    GUI.CollapseButton = collapseBtn
 
     -- Content area
     local content = Instance.new("Frame")
     content.Name = "Content"
-    content.Size = UDim2.new(1, -24, 1, -48)
-    content.Position = UDim2.new(0, 12, 0, 42)
+    content.Size = UDim2.new(1, -PADDING * 2, 1, -(COLLAPSED_HEIGHT + PADDING + 26))
+    content.Position = UDim2.new(0, PADDING, 0, COLLAPSED_HEIGHT + 6)
     content.BackgroundTransparency = 1
-    content.Parent = mainFrame
+    content.Parent = panel
     GUI.Content = content
 
-    -- Stats row
+    -- Stats row (two cards side by side)
     local statsRow = Instance.new("Frame")
-    statsRow.Name = "StatsRow"
-    statsRow.Size = UDim2.new(1, 0, 0, 46)
-    statsRow.BackgroundColor3 = Colors.bgSecondary
-    statsRow.BorderSizePixel = 0
+    statsRow.Name = "Stats"
+    statsRow.Size = UDim2.new(1, 0, 0, 50)
+    statsRow.BackgroundTransparency = 1
     statsRow.Parent = content
-    addCorner(statsRow, 8)
 
-    -- Player count stat
-    local playerStat = Instance.new("Frame")
-    playerStat.Size = UDim2.new(0.5, -4, 1, 0)
-    playerStat.BackgroundTransparency = 1
-    playerStat.Parent = statsRow
+    -- Stat card helper
+    local function statCard(xPos, width, valueTxt, valueColor, labelTxt)
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(width, -2, 1, 0)
+        card.Position = UDim2.new(xPos, xPos > 0 and 2 or 0, 0, 0)
+        card.BackgroundColor3 = C.surface
+        card.BorderSizePixel = 0
+        card.Parent = statsRow
+        addCorner(card, 8)
+        local val = label({
+            text = valueTxt,
+            color = valueColor,
+            size = 20,
+            font = Enum.Font.GothamBold,
+            alignX = Enum.TextXAlignment.Center,
+            sizeUDim = UDim2.new(1, 0, 0.55, 0),
+            pos = UDim2.new(0, 0, 0, 2),
+            parent = card,
+        })
+        label({
+            text = labelTxt,
+            color = C.textDim,
+            size = 9,
+            font = Enum.Font.GothamMedium,
+            alignX = Enum.TextXAlignment.Center,
+            sizeUDim = UDim2.new(1, 0, 0.35, 0),
+            pos = UDim2.new(0, 0, 0.58, 0),
+            parent = card,
+        })
+        return card, val
+    end
 
-    local playerCountLabel = Instance.new("TextLabel")
-    playerCountLabel.Size = UDim2.new(1, 0, 0.55, 0)
-    playerCountLabel.Position = UDim2.new(0, 0, 0, 4)
-    playerCountLabel.BackgroundTransparency = 1
-    playerCountLabel.Text = "0/6"
-    playerCountLabel.TextColor3 = Colors.accent
-    playerCountLabel.TextSize = 20
-    playerCountLabel.Font = Enum.Font.GothamBold
-    playerCountLabel.Parent = playerStat
-    GUI.PlayerCountLabel = playerCountLabel
-
-    local playerCountTitle = Instance.new("TextLabel")
-    playerCountTitle.Size = UDim2.new(1, 0, 0.35, 0)
-    playerCountTitle.Position = UDim2.new(0, 0, 0.58, 0)
-    playerCountTitle.BackgroundTransparency = 1
-    playerCountTitle.Text = "Players"
-    playerCountTitle.TextColor3 = Colors.textMuted
-    playerCountTitle.TextSize = 10
-    playerCountTitle.Font = Enum.Font.Gotham
-    playerCountTitle.Parent = playerStat
-
-    -- Status stat
-    local statusStat = Instance.new("Frame")
-    statusStat.Size = UDim2.new(0.5, -4, 1, 0)
-    statusStat.Position = UDim2.new(0.5, 4, 0, 0)
-    statusStat.BackgroundTransparency = 1
-    statusStat.Parent = statsRow
-
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, 0, 0.55, 0)
-    statusLabel.Position = UDim2.new(0, 0, 0, 4)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "ACTIVE"
-    statusLabel.TextColor3 = Colors.success
-    statusLabel.TextSize = 14
-    statusLabel.Font = Enum.Font.GothamBold
-    statusLabel.Parent = statusStat
-    GUI.StatusLabel = statusLabel
-
-    local statusTitle = Instance.new("TextLabel")
-    statusTitle.Size = UDim2.new(1, 0, 0.35, 0)
-    statusTitle.Position = UDim2.new(0, 0, 0.58, 0)
-    statusTitle.BackgroundTransparency = 1
     local isMobileForced = Config and Config.MOBILE_MODE
     local isMobileDetected = Chat and Chat.IsMobile()
-    local platformIcon = (isMobileForced ~= nil and isMobileForced or isMobileDetected) and "📱" or "🖥️"
-    statusTitle.Text = "Status · " .. platformIcon
-    statusTitle.TextColor3 = Colors.textMuted
-    statusTitle.TextSize = 10
-    statusTitle.Font = Enum.Font.Gotham
-    statusTitle.Parent = statusStat
+    local isMobile = isMobileForced ~= nil and isMobileForced or isMobileDetected
+    local platformStr = isMobile and "📱" or "🖥️"
+
+    local _, playerCountVal = statCard(0, 0.5, #Players:GetPlayers() .. "/" .. (Config and Config.MAX_PLAYERS or 6), C.accent, "Players")
+    GUI.PlayerCountLabel = playerCountVal
+
+    local _, statusVal = statCard(0.5, 0.5, "ACTIVE", C.green, "Status · " .. platformStr)
+    GUI.StatusLabel = statusVal
 
     -- Players section
-    local playersSection = Instance.new("Frame")
-    playersSection.Name = "PlayersSection"
-    playersSection.Size = UDim2.new(1, 0, 0, 105)
-    playersSection.Position = UDim2.new(0, 0, 0, 52)
-    playersSection.BackgroundTransparency = 1
-    playersSection.Parent = content
+    local playersY = 56
+    sectionHeader(content, "PLAYERS", C.textDim, playersY)
 
-    local playersHeader = Instance.new("TextLabel")
-    playersHeader.Size = UDim2.new(1, 0, 0, 18)
-    playersHeader.BackgroundTransparency = 1
-    playersHeader.Text = "PLAYERS"
-    playersHeader.TextColor3 = Colors.textMuted
-    playersHeader.TextSize = 10
-    playersHeader.Font = Enum.Font.GothamBold
-    playersHeader.TextXAlignment = Enum.TextXAlignment.Left
-    playersHeader.Parent = playersSection
+    local playerListBg = Instance.new("Frame")
+    playerListBg.Name = "PlayerListBg"
+    playerListBg.Size = UDim2.new(1, 0, 0, 112)
+    playerListBg.Position = UDim2.new(0, 0, 0, playersY + 18)
+    playerListBg.BackgroundColor3 = C.surface
+    playerListBg.BorderSizePixel = 0
+    playerListBg.ClipsDescendants = true
+    playerListBg.Parent = content
+    addCorner(playerListBg, 8)
 
-    local playerListContainer = Instance.new("Frame")
-    playerListContainer.Name = "PlayerListContainer"
-    playerListContainer.Size = UDim2.new(1, 0, 1, -20)
-    playerListContainer.Position = UDim2.new(0, 0, 0, 20)
-    playerListContainer.BackgroundColor3 = Colors.bgSecondary
-    playerListContainer.BorderSizePixel = 0
-    playerListContainer.ClipsDescendants = true
-    playerListContainer.Parent = playersSection
-    addCorner(playerListContainer, 6)
+    local playerScroll = Instance.new("ScrollingFrame")
+    playerScroll.Name = "PlayerList"
+    playerScroll.Size = UDim2.new(1, -6, 1, -6)
+    playerScroll.Position = UDim2.new(0, 3, 0, 3)
+    playerScroll.BackgroundTransparency = 1
+    playerScroll.BorderSizePixel = 0
+    playerScroll.ScrollBarThickness = 2
+    playerScroll.ScrollBarImageColor3 = C.accent
+    playerScroll.ScrollBarImageTransparency = 0.4
+    playerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    playerScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    playerScroll.Parent = playerListBg
+    GUI.PlayerList = playerScroll
 
-    local playerList = Instance.new("ScrollingFrame")
-    playerList.Name = "PlayerList"
-    playerList.Size = UDim2.new(1, -8, 1, -8)
-    playerList.Position = UDim2.new(0, 4, 0, 4)
-    playerList.BackgroundTransparency = 1
-    playerList.BorderSizePixel = 0
-    playerList.ScrollBarThickness = 2
-    playerList.ScrollBarImageColor3 = Colors.accent
-    playerList.ScrollBarImageTransparency = 0.3
-    playerList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    playerList.ScrollingDirection = Enum.ScrollingDirection.Y
-    playerList.Parent = playerListContainer
-    GUI.PlayerList = playerList
-
-    local playerListLayout = Instance.new("UIListLayout")
-    playerListLayout.SortOrder = Enum.SortOrder.Name
-    playerListLayout.Padding = UDim.new(0, 3)
-    playerListLayout.Parent = playerList
+    local playerLayout = Instance.new("UIListLayout")
+    playerLayout.SortOrder = Enum.SortOrder.Name
+    playerLayout.Padding = UDim.new(0, ENTRY_GAP)
+    playerLayout.Parent = playerScroll
 
     -- Banned section
-    local bannedSection = Instance.new("Frame")
-    bannedSection.Name = "BannedSection"
-    bannedSection.Size = UDim2.new(1, 0, 0, 80)
-    bannedSection.Position = UDim2.new(0, 0, 0, 162)
-    bannedSection.BackgroundTransparency = 1
-    bannedSection.Parent = content
+    local bannedY = playersY + 18 + 112 + 6
+    sectionHeader(content, "BANNED", C.red, bannedY)
 
-    local bannedHeader = Instance.new("TextLabel")
-    bannedHeader.Size = UDim2.new(1, 0, 0, 18)
-    bannedHeader.BackgroundTransparency = 1
-    bannedHeader.Text = "BANNED"
-    bannedHeader.TextColor3 = Colors.danger
-    bannedHeader.TextSize = 10
-    bannedHeader.Font = Enum.Font.GothamBold
-    bannedHeader.TextXAlignment = Enum.TextXAlignment.Left
-    bannedHeader.Parent = bannedSection
+    local bannedListBg = Instance.new("Frame")
+    bannedListBg.Name = "BannedListBg"
+    bannedListBg.Size = UDim2.new(1, 0, 0, 72)
+    bannedListBg.Position = UDim2.new(0, 0, 0, bannedY + 18)
+    bannedListBg.BackgroundColor3 = C.surface
+    bannedListBg.BorderSizePixel = 0
+    bannedListBg.ClipsDescendants = true
+    bannedListBg.Parent = content
+    addCorner(bannedListBg, 8)
 
-    local bannedListContainer = Instance.new("Frame")
-    bannedListContainer.Name = "BannedListContainer"
-    bannedListContainer.Size = UDim2.new(1, 0, 1, -20)
-    bannedListContainer.Position = UDim2.new(0, 0, 0, 20)
-    bannedListContainer.BackgroundColor3 = Color3.fromRGB(35, 25, 25)
-    bannedListContainer.BorderSizePixel = 0
-    bannedListContainer.ClipsDescendants = true
-    bannedListContainer.Parent = bannedSection
-    addCorner(bannedListContainer, 6)
+    local bannedScroll = Instance.new("ScrollingFrame")
+    bannedScroll.Name = "BannedList"
+    bannedScroll.Size = UDim2.new(1, -6, 1, -6)
+    bannedScroll.Position = UDim2.new(0, 3, 0, 3)
+    bannedScroll.BackgroundTransparency = 1
+    bannedScroll.BorderSizePixel = 0
+    bannedScroll.ScrollBarThickness = 2
+    bannedScroll.ScrollBarImageColor3 = C.red
+    bannedScroll.ScrollBarImageTransparency = 0.4
+    bannedScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    bannedScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    bannedScroll.Parent = bannedListBg
+    GUI.BannedList = bannedScroll
 
-    local bannedList = Instance.new("ScrollingFrame")
-    bannedList.Name = "BannedList"
-    bannedList.Size = UDim2.new(1, -8, 1, -8)
-    bannedList.Position = UDim2.new(0, 4, 0, 4)
-    bannedList.BackgroundTransparency = 1
-    bannedList.BorderSizePixel = 0
-    bannedList.ScrollBarThickness = 2
-    bannedList.ScrollBarImageColor3 = Colors.danger
-    bannedList.ScrollBarImageTransparency = 0.3
-    bannedList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    bannedList.ScrollingDirection = Enum.ScrollingDirection.Y
-    bannedList.Parent = bannedListContainer
-    GUI.BannedList = bannedList
+    local bannedLayout = Instance.new("UIListLayout")
+    bannedLayout.SortOrder = Enum.SortOrder.Name
+    bannedLayout.Padding = UDim.new(0, ENTRY_GAP)
+    bannedLayout.Parent = bannedScroll
 
-    local bannedListLayout = Instance.new("UIListLayout")
-    bannedListLayout.SortOrder = Enum.SortOrder.Name
-    bannedListLayout.Padding = UDim.new(0, 3)
-    bannedListLayout.Parent = bannedList
+    -- Footer bar
+    local footer = Instance.new("Frame")
+    footer.Name = "Footer"
+    footer.Size = UDim2.new(1, 0, 0, 22)
+    footer.Position = UDim2.new(0, 0, 1, -22)
+    footer.BackgroundColor3 = C.surface
+    footer.BorderSizePixel = 0
+    footer.Parent = panel
+    GUI.Footer = footer
+
+    local footerCorner = Instance.new("UICorner")
+    footerCorner.CornerRadius = UDim.new(0, 12)
+    footerCorner.Parent = footer
+
+    local footerFix = Instance.new("Frame")
+    footerFix.Size = UDim2.new(1, 0, 0, 14)
+    footerFix.BackgroundColor3 = C.surface
+    footerFix.BorderSizePixel = 0
+    footerFix.Parent = footer
+
+    local footerLine = Instance.new("Frame")
+    footerLine.Size = UDim2.new(1, -PADDING * 2, 0, 1)
+    footerLine.Position = UDim2.new(0, PADDING, 0, 0)
+    footerLine.BackgroundColor3 = C.surfaceHL
+    footerLine.BackgroundTransparency = 0.3
+    footerLine.BorderSizePixel = 0
+    footerLine.Parent = footer
+
+    local dryRun = Config and Config.DRY_RUN
+    local modeText = dryRun and "DRY RUN" or (isMobile and "MOBILE" or "DESKTOP")
+    local modeColor = dryRun and C.orange or C.textDim
+    label({
+        text = modeText,
+        color = modeColor,
+        size = 9,
+        font = Enum.Font.GothamBold,
+        sizeUDim = UDim2.new(0.5, 0, 1, 0),
+        pos = UDim2.new(0, PADDING, 0, 0),
+        parent = footer,
+    })
+    label({
+        text = "v1.0.0",
+        color = C.textDim,
+        size = 9,
+        font = Enum.Font.Gotham,
+        alignX = Enum.TextXAlignment.Right,
+        sizeUDim = UDim2.new(0.5, -PADDING, 1, 0),
+        pos = UDim2.new(0.5, 0, 0, 0),
+        parent = footer,
+    })
 
     GUI.ScreenGui = screenGui
 
-    -- Toggle button click handler (show/hide main panel)
-    toggleButton.MouseButton1Click:Connect(function()
+    -- Toggle button click handler
+    toggleBtn.MouseButton1Click:Connect(function()
         GUI.IsHidden = not GUI.IsHidden
-        mainFrame.Visible = not GUI.IsHidden
-        toggleButton.Text = GUI.IsHidden and "🐝" or "✕"
-        toggleButton.BackgroundColor3 = GUI.IsHidden and Colors.accent or Colors.danger
+        panel.Visible = not GUI.IsHidden
+        toggleIcon.Text = GUI.IsHidden and "🐝" or "X"
+        toggleIcon.Font = GUI.IsHidden and Enum.Font.SourceSans or Enum.Font.GothamBold
+        toggleIcon.TextSize = GUI.IsHidden and 22 or 18
+        toggleIcon.TextColor3 = GUI.IsHidden and C.text or C.red
+        local borderColor = GUI.IsHidden and C.accent or C.red
+        local s = toggleBtn:FindFirstChildOfClass("UIStroke")
+        if s then s.Color = borderColor end
     end)
 
-    -- Collapse button click handler (expand/collapse)
-    collapseButton.MouseButton1Click:Connect(function()
+    -- Collapse button click handler
+    collapseBtn.MouseButton1Click:Connect(function()
         GUI.ToggleCollapse()
     end)
 
@@ -425,27 +539,28 @@ function GUI.ToggleCollapse()
     
     local targetHeight = GUI.IsCollapsed and COLLAPSED_HEIGHT or EXPANDED_HEIGHT
     
-    -- Animate size only, keep current position
-    local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local tween = TweenService:Create(GUI.MainFrame, tweenInfo, {
-        Size = UDim2.new(0, 240, 0, targetHeight)
+        Size = UDim2.new(0, PANEL_WIDTH, 0, targetHeight)
     })
     tween:Play()
     
-    -- Update arrow and title bar
     if GUI.CollapseButton then
-        GUI.CollapseButton.Text = GUI.IsCollapsed and "▲" or "▼"
+        GUI.CollapseButton.Text = GUI.IsCollapsed and ">" or "v"
+        GUI.CollapseButton.TextSize = GUI.IsCollapsed and 14 or 12
     end
     
-    -- Hide/show title fix (bottom corners)
-    local titleFix = GUI.MainFrame and GUI.MainFrame:FindFirstChild("TitleBar") and GUI.MainFrame.TitleBar:FindFirstChild("TitleFix")
-    if titleFix then
-        titleFix.Visible = not GUI.IsCollapsed
-    end
-    
-    -- Show/hide content
     if GUI.Content then
         GUI.Content.Visible = not GUI.IsCollapsed
+    end
+    if GUI.Footer then
+        GUI.Footer.Visible = not GUI.IsCollapsed
+    end
+    if GUI.TitleFix then
+        GUI.TitleFix.Visible = not GUI.IsCollapsed
+    end
+    if GUI.AccentLine then
+        GUI.AccentLine.Visible = not GUI.IsCollapsed
     end
 end
 
@@ -467,29 +582,43 @@ end
 local function createPlayerEntry(playerName, hiveData, checkedData)
     local entry = Instance.new("Frame")
     entry.Name = playerName
-    entry.Size = UDim2.new(1, -4, 0, 22)
-    entry.BackgroundColor3 = Colors.bgTertiary
+    entry.Size = UDim2.new(1, -2, 0, ENTRY_HEIGHT)
+    entry.BackgroundColor3 = C.surfaceHL
     entry.BorderSizePixel = 0
-    addCorner(entry, 4)
+    addCorner(entry, 5)
+    entry.ClipsDescendants = true
+
+    -- Left indicator bar
+    local indicator = Instance.new("Frame")
+    indicator.Name = "Indicator"
+    indicator.Size = UDim2.new(0, INDICATOR_WIDTH, 1, 0)
+    indicator.BackgroundColor3 = C.textDim
+    indicator.BorderSizePixel = 0
+    indicator.Parent = entry
+    local indCorner = Instance.new("UICorner")
+    indCorner.CornerRadius = UDim.new(0, 5)
+    indCorner.Parent = indicator
     
     -- Player name
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
-    nameLabel.Position = UDim2.new(0, 6, 0, 0)
+    nameLabel.Size = UDim2.new(0.55, -INDICATOR_WIDTH - 4, 1, 0)
+    nameLabel.Position = UDim2.new(0, INDICATOR_WIDTH + 8, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = playerName
-    nameLabel.TextColor3 = Colors.text
+    nameLabel.TextColor3 = C.text
     nameLabel.TextSize = 11
-    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.Font = Enum.Font.GothamMedium
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
     nameLabel.Parent = entry
     
-    -- Stats container (right side)
+    -- Stats (right side)
     local statsLabel = Instance.new("TextLabel")
-    statsLabel.Size = UDim2.new(0.42, 0, 1, 0)
-    statsLabel.Position = UDim2.new(0.55, 0, 0, 0)
+    statsLabel.Size = UDim2.new(0.42, -4, 1, 0)
+    statsLabel.Position = UDim2.new(0.58, 0, 0, 0)
     statsLabel.BackgroundTransparency = 1
+    statsLabel.Text = "..."
+    statsLabel.TextColor3 = C.textSec
     statsLabel.TextSize = 10
     statsLabel.Font = Enum.Font.GothamMedium
     statsLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -498,26 +627,24 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
     -- Check if whitelisted
     local isWhitelisted = Config and Config.IsWhitelisted(playerName)
     
-    -- Determine stats to display
+    -- Determine colors & stats
     if isWhitelisted then
-        -- Whitelisted players get blue styling regardless of hive data
         if hiveData then
-            local avgLvl = hiveData.avgLevel or 0
-            statsLabel.Text = string.format("Lv%.1f  WL", avgLvl)
+            statsLabel.Text = string.format("Lv%.1f  WL", hiveData.avgLevel or 0)
         else
             statsLabel.Text = "whitelisted"
         end
-        statsLabel.TextColor3 = Colors.info
-        nameLabel.TextColor3 = Colors.info
-        entry.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
+        statsLabel.TextColor3 = C.blue
+        nameLabel.TextColor3 = C.blue
+        indicator.BackgroundColor3 = C.blue
+        entry.BackgroundColor3 = C.blueBg
     elseif hiveData then
         local avgLvl = hiveData.avgLevel or 0
         local totalBees = hiveData.totalBees or 0
+        local pct = 0
         
-        -- Calculate percentage at required level
-        local percentAtLevel = 0
         if checkedData and checkedData.details and checkedData.details.percentAtLevel then
-            percentAtLevel = checkedData.details.percentAtLevel * 100
+            pct = checkedData.details.percentAtLevel * 100
         elseif totalBees > 0 and Config then
             local beesAtOrAbove = 0
             for level, count in pairs(hiveData.levelCounts or {}) do
@@ -525,26 +652,29 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
                     beesAtOrAbove = beesAtOrAbove + count
                 end
             end
-            percentAtLevel = (beesAtOrAbove / totalBees) * 100
+            pct = (beesAtOrAbove / totalBees) * 100
         end
         
-        statsLabel.Text = string.format("Lv%.1f  %.0f%%", avgLvl, percentAtLevel)
+        statsLabel.Text = string.format("Lv%.1f  %.0f%%", avgLvl, pct)
         
-        -- Color based on pass/fail
-        local requiredPct = Config and (Config.REQUIRED_PERCENT or 0.9) * 100 or 90
-        if percentAtLevel >= requiredPct then
-            statsLabel.TextColor3 = Colors.success
-            entry.BackgroundColor3 = Color3.fromRGB(30, 45, 30)
+        local reqPct = Config and (Config.REQUIRED_PERCENT or 0.9) * 100 or 90
+        if pct >= reqPct then
+            statsLabel.TextColor3 = C.green
+            indicator.BackgroundColor3 = C.green
+            entry.BackgroundColor3 = C.greenBg
         elseif totalBees < (Config and Config.MIN_BEES_REQUIRED or 35) then
-            statsLabel.TextColor3 = Colors.warning
-            entry.BackgroundColor3 = Color3.fromRGB(45, 40, 25)
+            statsLabel.TextColor3 = C.orange
+            indicator.BackgroundColor3 = C.orange
+            entry.BackgroundColor3 = C.orangeBg
         else
-            statsLabel.TextColor3 = Colors.danger
-            entry.BackgroundColor3 = Color3.fromRGB(45, 30, 30)
+            statsLabel.TextColor3 = C.red
+            indicator.BackgroundColor3 = C.red
+            entry.BackgroundColor3 = C.redBg
         end
     else
         statsLabel.Text = "scanning..."
-        statsLabel.TextColor3 = Colors.textMuted
+        statsLabel.TextColor3 = C.textDim
+        indicator.BackgroundColor3 = C.textDim
     end
     
     return entry
@@ -558,36 +688,33 @@ function GUI.UpdatePlayerList()
         end
         
         local localPlayer = Players.LocalPlayer
+        local entryCount = 0
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= localPlayer then
                 local hiveData = GUI.LastScanResults and GUI.LastScanResults[player.Name]
                 local checkedData = GUI.CheckedPlayers and GUI.CheckedPlayers[player.Name]
                 local entry = createPlayerEntry(player.Name, hiveData, checkedData)
                 entry.Parent = GUI.PlayerList
+                entryCount = entryCount + 1
             end
         end
         
         -- Show empty state if no other players
-        if #Players:GetPlayers() <= 1 then
+        if entryCount == 0 then
             local emptyLabel = Instance.new("TextLabel")
             emptyLabel.Name = "_Empty"
-            emptyLabel.Size = UDim2.new(1, 0, 0, 22)
+            emptyLabel.Size = UDim2.new(1, 0, 0, ENTRY_HEIGHT)
             emptyLabel.BackgroundTransparency = 1
             emptyLabel.Text = "No other players"
-            emptyLabel.TextColor3 = Colors.textMuted
+            emptyLabel.TextColor3 = C.textDim
             emptyLabel.TextSize = 11
             emptyLabel.Font = Enum.Font.Gotham
             emptyLabel.Parent = GUI.PlayerList
+            entryCount = 1
         end
         
-        -- Update canvas size manually (avoids stale AutomaticCanvasSize gaps)
-        local entryCount = 0
-        for _, child in ipairs(GUI.PlayerList:GetChildren()) do
-            if child:IsA("Frame") or child:IsA("TextLabel") then
-                entryCount = entryCount + 1
-            end
-        end
-        GUI.PlayerList.CanvasSize = UDim2.new(0, 0, 0, entryCount * 22 + math.max(0, entryCount - 1) * 3)
+        -- Update canvas size manually
+        GUI.PlayerList.CanvasSize = UDim2.new(0, 0, 0, entryCount * ENTRY_HEIGHT + math.max(0, entryCount - 1) * ENTRY_GAP)
     end)
 end
 
@@ -598,83 +725,97 @@ function GUI.UpdateBannedList(bannedPlayers)
             if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
         end
         
-        local hasBanned = false
+        local bannedCount = 0
         if bannedPlayers then
             for playerName, banData in pairs(bannedPlayers) do
-                hasBanned = true
                 local entry = Instance.new("Frame")
                 entry.Name = playerName
-                entry.Size = UDim2.new(1, -4, 0, 20)
+                entry.Size = UDim2.new(1, -2, 0, BANNED_ENTRY_HEIGHT)
                 entry.BorderSizePixel = 0
+                entry.ClipsDescendants = true
                 addCorner(entry, 4)
                 
-                -- Color based on verification status
-                local bgColor, textColor, statusIcon
+                -- Determine state (text icons instead of emoji)
+                local bgColor, textColor, statusIcon, indicatorColor
                 if banData.dryRun then
-                    bgColor = Color3.fromRGB(60, 60, 30) -- Yellow-ish for dry run
-                    textColor = Colors.warning
-                    statusIcon = "⚠️"
+                    bgColor = C.dryRunBg
+                    textColor = C.orange
+                    indicatorColor = C.orange
+                    statusIcon = "!"
                 elseif banData.verified then
-                    bgColor = Color3.fromRGB(30, 60, 30) -- Green for verified
-                    textColor = Colors.success
-                    statusIcon = "✅"
+                    bgColor = C.verifiedBg
+                    textColor = C.green
+                    indicatorColor = C.green
+                    statusIcon = "OK"
                 elseif banData.failed then
-                    bgColor = Color3.fromRGB(80, 30, 30) -- Dark red for failed
+                    bgColor = C.failedBg
                     textColor = Color3.fromRGB(255, 100, 100)
-                    statusIcon = "❌"
+                    indicatorColor = C.red
+                    statusIcon = "F"
                 else
-                    bgColor = Color3.fromRGB(60, 50, 30) -- Orange for pending
-                    textColor = Colors.warning
-                    statusIcon = "⏳"
+                    bgColor = C.pendingBg
+                    textColor = C.orange
+                    indicatorColor = C.orange
+                    statusIcon = "..."
                 end
                 entry.BackgroundColor3 = bgColor
+
+                -- Left indicator bar
+                local ind = Instance.new("Frame")
+                ind.Size = UDim2.new(0, INDICATOR_WIDTH, 1, 0)
+                ind.BackgroundColor3 = indicatorColor
+                ind.BorderSizePixel = 0
+                ind.Parent = entry
+                local ic = Instance.new("UICorner")
+                ic.CornerRadius = UDim.new(0, 4)
+                ic.Parent = ind
                 
+                -- Name
                 local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(1, -24, 1, 0)
-                nameLabel.Position = UDim2.new(0, 6, 0, 0)
+                nameLabel.Size = UDim2.new(1, -INDICATOR_WIDTH - 30, 1, 0)
+                nameLabel.Position = UDim2.new(0, INDICATOR_WIDTH + 8, 0, 0)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = playerName
                 nameLabel.TextColor3 = textColor
-                nameLabel.TextSize = 11
+                nameLabel.TextSize = 10
                 nameLabel.Font = Enum.Font.GothamMedium
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
                 nameLabel.Parent = entry
                 
-                -- Status indicator
+                -- Status icon (text)
                 local statusLabel = Instance.new("TextLabel")
-                statusLabel.Size = UDim2.new(0, 18, 1, 0)
-                statusLabel.Position = UDim2.new(1, -20, 0, 0)
+                statusLabel.Size = UDim2.new(0, 22, 1, 0)
+                statusLabel.Position = UDim2.new(1, -24, 0, 0)
                 statusLabel.BackgroundTransparency = 1
                 statusLabel.Text = statusIcon
-                statusLabel.TextSize = 10
-                statusLabel.Font = Enum.Font.Gotham
+                statusLabel.TextColor3 = textColor
+                statusLabel.TextSize = 9
+                statusLabel.Font = Enum.Font.GothamBold
+                statusLabel.TextXAlignment = Enum.TextXAlignment.Center
                 statusLabel.Parent = entry
                 
                 entry.Parent = GUI.BannedList
+                bannedCount = bannedCount + 1
             end
         end
         
-        if not hasBanned then
+        if bannedCount == 0 then
             local noneLabel = Instance.new("TextLabel")
             noneLabel.Name = "_None"
-            noneLabel.Size = UDim2.new(1, 0, 0, 20)
+            noneLabel.Size = UDim2.new(1, 0, 0, BANNED_ENTRY_HEIGHT)
             noneLabel.BackgroundTransparency = 1
             noneLabel.Text = "None"
-            noneLabel.TextColor3 = Colors.textMuted
-            noneLabel.TextSize = 11
+            noneLabel.TextColor3 = C.textDim
+            noneLabel.TextSize = 10
             noneLabel.Font = Enum.Font.Gotham
+            noneLabel.TextXAlignment = Enum.TextXAlignment.Center
             noneLabel.Parent = GUI.BannedList
+            bannedCount = 1
         end
         
-        -- Update canvas size manually (avoids stale AutomaticCanvasSize gaps)
-        local entryCount = 0
-        for _, child in ipairs(GUI.BannedList:GetChildren()) do
-            if child:IsA("Frame") or child:IsA("TextLabel") then
-                entryCount = entryCount + 1
-            end
-        end
-        GUI.BannedList.CanvasSize = UDim2.new(0, 0, 0, entryCount * 20 + math.max(0, entryCount - 1) * 3)
+        -- Update canvas size manually
+        GUI.BannedList.CanvasSize = UDim2.new(0, 0, 0, bannedCount * BANNED_ENTRY_HEIGHT + math.max(0, bannedCount - 1) * ENTRY_GAP)
     end)
 end
 
@@ -683,11 +824,14 @@ function GUI.UpdateStatus(isRunning)
         if GUI.StatusLabel then
             if isRunning then
                 GUI.StatusLabel.Text = "ACTIVE"
-                GUI.StatusLabel.TextColor3 = Colors.success
+                GUI.StatusLabel.TextColor3 = C.green
             else
                 GUI.StatusLabel.Text = "PAUSED"
-                GUI.StatusLabel.TextColor3 = Colors.danger
+                GUI.StatusLabel.TextColor3 = C.red
             end
+        end
+        if GUI.StatusDot then
+            GUI.StatusDot.BackgroundColor3 = isRunning and C.green or C.red
         end
     end)
 end
