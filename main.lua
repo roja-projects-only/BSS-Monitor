@@ -80,7 +80,7 @@ if not Config or not Scanner or not Monitor then
 end
 
 -- Initialize modules
-GUI.Init(Config, Monitor)
+GUI.Init(Config, Monitor, Chat)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
 -- Create GUI (always show minimal)

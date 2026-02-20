@@ -16,6 +16,7 @@ GUI.IsHidden = false
 
 local Config = nil
 local Monitor = nil
+local Chat = nil
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -39,9 +40,10 @@ local Colors = {
     info = Color3.fromRGB(33, 150, 243),
 }
 
-function GUI.Init(config, monitor)
+function GUI.Init(config, monitor, chat)
     Config = config
     Monitor = monitor
+    Chat = chat
     return GUI
 end
 
@@ -273,7 +275,8 @@ function GUI.Create()
     statusTitle.Size = UDim2.new(1, 0, 0.35, 0)
     statusTitle.Position = UDim2.new(0, 0, 0.58, 0)
     statusTitle.BackgroundTransparency = 1
-    statusTitle.Text = "Status"
+    local platformIcon = (Chat and Chat.IsMobile()) and "📱" or "🖥️"
+    statusTitle.Text = "Status · " .. platformIcon
     statusTitle.TextColor3 = Colors.textMuted
     statusTitle.TextSize = 10
     statusTitle.Font = Enum.Font.Gotham

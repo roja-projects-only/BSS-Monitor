@@ -112,7 +112,7 @@ end
 print("")
 
 -- Initialize modules
-if GUI then GUI.Init(Config, Monitor) end
+if GUI then GUI.Init(Config, Monitor, Chat) end
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
 -- Create GUI if enabled
