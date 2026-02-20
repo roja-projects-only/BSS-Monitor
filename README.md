@@ -11,9 +11,10 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 - ✅ **Ban Verification** - Confirms player actually leaves server; mobile gets 3s quick check then webhook fallback
 - 🔔 **Discord Webhooks** - Get notifications when players are kicked/banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
-- 🖥️ **Optional GUI** - Player list with status indicators
+- 🖥️ **Optional GUI** - Player list with status indicators and live version display
 - 🔄 **Auto-Cleanup** - Re-execute script anytime, automatically cleans up previous session
 - ✅ **Dry Run Mode** - Test the system without actually kicking anyone
+- 🏷️ **Auto Versioning** - Semantic version bumped automatically by CI on every push
 
 ## Installation
 
@@ -31,13 +32,16 @@ _G.BSSMonitorConfig = {
     DISCORD_USER_ID = "YOUR_DISCORD_USER_ID",  -- For mobile @mention notifications
     DRY_RUN = false,           -- Set to false to actually kick/ban
     AUTO_START = true,         -- Start monitoring immediately
-    USE_KICK = true,           -- Use /kick (true) or /ban (false)
+    USE_KICK = false,          -- Use /kick (true) or /ban (false)
     MINIMUM_LEVEL = 17,        -- Minimum bee level
     REQUIRED_PERCENT = 0.80,   -- 80% of bees must meet level
-    GRACE_PERIOD = 120,        -- Seconds before checking new players
+    GRACE_PERIOD = 20,         -- Seconds before checking new players
+    MOBILE_MODE = true,        -- Force mobile mode (nil = auto-detect)
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/loader.lua"))()
 ```
+
+> **Note:** Any key from the config table can be overridden via `_G.BSSMonitorConfig`, including keys that default to `nil` (like `MOBILE_MODE`).
 
 ## Configuration Options
 
@@ -190,15 +194,18 @@ By default, `USE_KICK = true` which uses `/kick` instead of `/ban`. This is more
 
 ```
 BSS-Monitor/
-├── loader.lua          # Loadstring entry point
+├── loader.lua          # Loadstring entry point (with cache-busting)
 ├── main.lua            # Main orchestrator (with auto-cleanup)
 ├── modules/
-│   ├── config.lua      # Configuration settings
+│   ├── config.lua      # Configuration & VERSION (auto-bumped by CI)
 │   ├── scanner.lua     # Hive scanning logic
 │   ├── monitor.lua     # Monitoring loop & ban verification
 │   ├── chat.lua        # Chat command sender (VirtualInputManager)
 │   ├── webhook.lua     # Discord integration
-│   └── gui.lua         # User interface
+│   └── gui.lua         # User interface (shows version in footer)
+├── .github/
+│   └── workflows/
+│       └── version-bump.yml  # Auto semantic versioning CI
 ├── tests/              # Test scripts (gitignored)
 └── README.md
 ```
@@ -210,6 +217,19 @@ BSS-Monitor/
 - **Mobile fallback**: Discord webhook with `DISCORD_USER_ID` for ban notifications if VIM fails
 - Private server in Bee Swarm Simulator (with kick/ban permissions)
 - HTTP requests enabled in executor (for webhooks)
+
+## Versioning
+
+Version is managed automatically via CI. On every push to `main`, the GitHub Action bumps `Config.VERSION` in `modules/config.lua` based on [conventional commit](https://www.conventionalcommits.org/) prefixes:
+
+| Commit prefix | Bump | Example |
+|---|---|---|
+| `fix:` | Patch (1.0.0 → 1.0.1) | `fix: mobile detection` |
+| `feat:` | Minor (1.0.0 → 1.1.0) | `feat: add whitelist GUI` |
+| `feat!:` / `BREAKING CHANGE` | Major (1.0.0 → 2.0.0) | `feat!: redesign config` |
+| anything else | Patch | `chore: update readme` |
+
+The version is displayed in the GUI footer and accessible via `_G.BSSMonitor.version`. Never edit `Config.VERSION` manually.
 
 ## License
 
