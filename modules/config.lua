@@ -52,7 +52,7 @@ Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some
 -- =============================================
 -- MOBILE SETTINGS (auto-detected, but can override)
 -- =============================================
-Config.MOBILE_MODE = nil            -- nil = auto-detect, true = force mobile, false = force desktop
+Config.MOBILE_MODE = nil           -- nil = auto-detect, true = force mobile, false = force desktop
 
 -- =============================================
 -- DISCORD NOTIFICATION SETTINGS

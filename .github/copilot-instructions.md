@@ -81,13 +81,13 @@ GUI.UpdateDisplay() → player list + banned list with status indicators
 VirtualInputManager now works on both desktop and mobile for sending chat commands. The chat module always attempts VIM first. If the ban doesn't take effect on mobile (player still in server after 3s), the monitor falls back to sending a Discord webhook notification.
 
 ### Chat Module
-Platform detection uses 6 signals: TouchEnabled/KeyboardEnabled, IsTenFootInterface, viewport size, MouseEnabled, GyroscopeEnabled, GamepadEnabled. Re-checks 1s after load.
+Platform detection uses 6 signals: TouchEnabled/KeyboardEnabled, IsTenFootInterface, viewport size, MouseEnabled, GyroscopeEnabled, GamepadEnabled. Re-checks 1s after load. **Config.MOBILE_MODE is the single source of truth** — when set to true/false it overrides auto-detection in all modules.
 
 Chat input found via: `CoreGui.ExperienceChat` → descendant TextBox named "TextBox"
 
 ```lua
--- Always uses VirtualInputManager (both platforms)
-Chat.IsMobile()                -- Returns true/false
+Chat.Init(Config)              -- Initialize with config (MUST be called before use)
+Chat.IsMobile()                -- Returns true/false (checks Config.MOBILE_MODE first, then auto-detect)
 Chat.GetPlatform()             -- Returns "Mobile" or "Desktop"
 Chat.IsAvailable()             -- Check if chat input exists
 Chat.SendMessage(msg)          -- Send via VirtualInputManager
@@ -224,7 +224,7 @@ _G.BSSMonitorConfig = {
     MAX_PLAYERS = 6,            -- Private server max
 
     -- Mobile
-    MOBILE_MODE = nil,          -- nil=auto, true=force mobile, false=force desktop
+    MOBILE_MODE = true,             -- nil=auto, true=force mobile, false=force desktop
 
     -- Discord Notification
     DISCORD_USER_ID = "",       -- Discord user ID for @mention in ban notifications
@@ -247,6 +247,7 @@ Config.RemoveFromWhitelist(username)  -- Returns true if removed
 ### Module Initialization
 Modules export tables with functions. Init with dependencies:
 ```lua
+Chat.Init(Config)
 GUI.Init(Config, Monitor, Chat)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 ```
@@ -292,6 +293,9 @@ Tested on:
 - **Delta** (mobile) - VIM auto-ban + webhook fallback
 - **Seliware** (desktop) - VirtualInputManager works
 - Should work on Synapse, Fluxus, etc.
+
+## Workflow Rules
+- **Always commit after each task is completed.** When you finish a task (bug fix, feature, refactor, etc.), stage and commit the changes immediately before moving on to the next task. Use clear, descriptive commit messages summarizing what was done.
 
 ## Testing Notes
 - Enable `DRY_RUN = true` to test without kicking

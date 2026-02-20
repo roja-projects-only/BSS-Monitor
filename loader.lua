@@ -156,12 +156,8 @@ end
 
 print("")
 
--- Apply MOBILE_MODE override to Chat module
-if Chat and Config.MOBILE_MODE ~= nil then
-    Chat.MobileOverride = Config.MOBILE_MODE
-end
-
 -- Initialize modules
+if Chat then Chat.Init(Config) end
 if GUI then GUI.Init(Config, Monitor, Chat) end
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 

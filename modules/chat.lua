@@ -14,6 +14,9 @@ local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
+-- Dependencies (set by Init)
+local Config = nil
+
 -- Detect platform with multiple signals for reliability
 local isMobile = nil
 
@@ -210,13 +213,20 @@ function Chat.IsAvailable()
     return false, "Chat input not found"
 end
 
--- Override for Config.MOBILE_MODE (set externally after load)
-Chat.MobileOverride = nil
+-- Initialize with dependencies
+function Chat.Init(config)
+    Config = config
+    -- Log effective platform after init
+    local effective = Chat.IsMobile()
+    print("[BSS Monitor] Chat platform: " .. (effective and "Mobile (forced)" or (isMobile and "Mobile (auto)" or "Desktop")))
+    return Chat
+end
 
--- Check platform (respects forced override)
+-- Check platform: Config.MOBILE_MODE is the single source of truth.
+-- nil = use auto-detected value, true/false = forced override.
 function Chat.IsMobile()
-    if Chat.MobileOverride ~= nil then
-        return Chat.MobileOverride
+    if Config and Config.MOBILE_MODE ~= nil then
+        return Config.MOBILE_MODE
     end
     return isMobile
 end

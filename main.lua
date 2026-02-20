@@ -89,12 +89,8 @@ if not Config or not Scanner or not Monitor then
     return
 end
 
--- Apply MOBILE_MODE override to Chat module
-if Chat and Config.MOBILE_MODE ~= nil then
-    Chat.MobileOverride = Config.MOBILE_MODE
-end
-
 -- Initialize modules
+Chat.Init(Config)
 GUI.Init(Config, Monitor, Chat)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
