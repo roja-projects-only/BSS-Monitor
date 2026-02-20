@@ -302,7 +302,7 @@ Tested on:
   - `feat!:` or `BREAKING CHANGE` → major bump (1.0.0 → 2.0.0)
   - anything else (`chore:`, `docs:`, etc.) → patch bump
 - **Never edit `Config.VERSION` manually.** It is auto-bumped by the CI workflow (`.github/workflows/version-bump.yml`) on every push to main.
-- **Always `git pull` before `git push`.** The CI version-bump workflow pushes a commit back to `main`, so local will be behind after each push. Use `git pull; git push` (repo is configured with `pull.rebase = true` to avoid merge commits).
+- **Commit freely without pulling first.** `git commit` is local and never requires a pull. Only pull before **pushing**: `git pull --rebase; git push`. The CI version-bump workflow pushes a commit back to `main`, so the remote will be ahead after each push.
 
 ## Testing Notes
 - Enable `DRY_RUN = true` to test without kicking
