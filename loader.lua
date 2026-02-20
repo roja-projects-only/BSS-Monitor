@@ -143,13 +143,11 @@ if customConfig then
     print("")
     print("Applying custom config...")
     for key, value in pairs(customConfig) do
-        if Config[key] ~= nil then
-            Config[key] = value
-            if key == "WEBHOOK_URL" then
-                print("  • " .. key .. " = " .. maskWebhook(value))
-            else
-                print("  • " .. key .. " = " .. tostring(value))
-            end
+        Config[key] = value
+        if key == "WEBHOOK_URL" then
+            print("  • " .. key .. " = " .. maskWebhook(value))
+        else
+            print("  • " .. key .. " = " .. tostring(value))
         end
     end
 end
