@@ -318,5 +318,4 @@ Tested on:
 - `test_typing.lua` - Test typing simulation
 - `test_final_mobile.lua`, `test_mobile_deep.lua` - Deep mobile tests
 - `test_isolated.lua`, `test_alternative.lua` - Alternative approach tests
-- `checkpoint_test_executor.lua` - Executor checkpoint tests
 

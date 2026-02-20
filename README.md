@@ -6,11 +6,12 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 
 - 🔍 **Hive Scanning** - Scans all player hives in the server
 - 📊 **Level Verification** - Checks if players meet the 80%+ Lv17 requirement
-- 🚫 **Auto-Kick/Ban** - Automatically sends `/kick` or `/ban` command for non-compliant players
-- ✅ **Ban Verification** - Confirms player actually leaves server, retries up to 3 times
+- 🚫 **Auto-Kick/Ban** - Desktop: auto-sends `/kick` or `/ban` via VirtualInputManager
+- 📱 **Mobile Support** - Sends Discord webhook with @mention ping and tap-to-copy `/ban` command
+- ✅ **Ban Verification** - Confirms player actually leaves server, retries up to 3 times (desktop)
 - 🔔 **Discord Webhooks** - Get notifications when players are kicked/banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
-- 📱 **Optional GUI** - Player list with status indicators
+- 🖥️ **Optional GUI** - Player list with status indicators
 - 🔄 **Auto-Cleanup** - Re-execute script anytime, automatically cleans up previous session
 - ✅ **Dry Run Mode** - Test the system without actually kicking anyone
 
@@ -27,6 +28,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 ```lua
 _G.BSSMonitorConfig = {
     WEBHOOK_URL = "YOUR_DISCORD_WEBHOOK_URL",
+    DISCORD_USER_ID = "YOUR_DISCORD_USER_ID",  -- For mobile @mention notifications
     DRY_RUN = false,           -- Set to false to actually kick/ban
     AUTO_START = true,         -- Start monitoring immediately
     USE_KICK = true,           -- Use /kick (true) or /ban (false)
@@ -52,8 +54,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `AUTO_START` | true | Start monitoring automatically on load |
 | `SHOW_GUI` | false | Show GUI (disabled by default for compatibility) |
 | `USE_KICK` | true | Use `/kick` instead of `/ban` (some servers only support kick) |
+| `MOBILE_MODE` | nil | nil = auto-detect, true = force mobile, false = force desktop |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |
+| `DISCORD_USER_ID` | "" | Your Discord user ID for @mention in mobile ban notifications |
 
 ## Commands
 
@@ -98,11 +102,21 @@ Simply run the loadstring again to reload with updated settings.
 
 ## Ban Verification
 
+### Desktop
 When a player is kicked/banned, the monitor:
-1. Sends the `/kick` or `/ban` command
+1. Sends the `/kick` or `/ban` command via VirtualInputManager
 2. Waits up to 10 seconds to confirm player left
 3. If still in server, retries up to 3 times
 4. Sends Discord notification on success or failure
+
+### Mobile
+Roblox blocks programmatically-sent chat messages on mobile (server-side validation). The monitor uses Discord webhooks instead:
+1. Detects player failing requirements
+2. Sends Discord webhook with `<@YOUR_USER_ID>` to trigger a push notification
+3. Embed includes a `/ban PlayerName` code block — tap to copy on Discord mobile
+4. You paste the command into Roblox chat manually
+
+Set `DISCORD_USER_ID` in your config for @mention pings to work.
 
 **GUI Status Indicators:**
 - ✅ Green = Verified (player left server)
@@ -146,11 +160,13 @@ _G.BSSMonitor.whitelist("FriendName")
 
 1. In Discord, go to Server Settings → Integrations → Webhooks
 2. Create a new webhook and copy the URL
-3. Set the URL in your config:
+3. Get your Discord user ID (enable Developer Mode → right-click your name → Copy User ID)
+4. Set both in your config:
 
 ```lua
 _G.BSSMonitorConfig = {
-    WEBHOOK_URL = "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+    WEBHOOK_URL = "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL",
+    DISCORD_USER_ID = "123456789012345678",  -- For mobile @mention pings
 }
 ```
 
@@ -189,7 +205,9 @@ BSS-Monitor/
 
 ## Requirements
 
-- Roblox script executor with VirtualInputManager support (Seliware, Synapse, etc.)
+- Roblox script executor (Seliware, Delta, etc.)
+- **Desktop**: VirtualInputManager support for auto-sending chat commands
+- **Mobile**: Discord webhook with `DISCORD_USER_ID` for ban notifications
 - Private server in Bee Swarm Simulator (with kick/ban permissions)
 - HTTP requests enabled in executor (for webhooks)
 
