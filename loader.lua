@@ -215,7 +215,7 @@ _G.BSSMonitor = {
     end,
     
     -- Version
-    version = "1.0.0"
+    version = Config.VERSION or "unknown"
 }
 
 print("═══════════════════════════════════════════")

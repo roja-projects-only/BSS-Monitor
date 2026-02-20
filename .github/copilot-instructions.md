@@ -296,6 +296,12 @@ Tested on:
 
 ## Workflow Rules
 - **Always commit after each task is completed.** When you finish a task (bug fix, feature, refactor, etc.), stage and commit the changes immediately before moving on to the next task. Use clear, descriptive commit messages summarizing what was done.
+- **Use conventional commit prefixes** for automatic semantic versioning:
+  - `fix:` → patch bump (1.0.0 → 1.0.1)
+  - `feat:` → minor bump (1.0.0 → 1.1.0)
+  - `feat!:` or `BREAKING CHANGE` → major bump (1.0.0 → 2.0.0)
+  - anything else (`chore:`, `docs:`, etc.) → patch bump
+- **Never edit `Config.VERSION` manually.** It is auto-bumped by the CI workflow (`.github/workflows/version-bump.yml`) on every push to main.
 
 ## Testing Notes
 - Enable `DRY_RUN = true` to test without kicking

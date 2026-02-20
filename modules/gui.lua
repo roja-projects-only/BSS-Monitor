@@ -489,7 +489,7 @@ function GUI.Create()
         parent = footer,
     })
     label({
-        text = "v1.0.0",
+        text = "v" .. (Config and Config.VERSION or "?.?.?"),
         color = C.textDim,
         size = 9,
         font = Enum.Font.Gotham,

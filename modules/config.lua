@@ -6,6 +6,11 @@
 local Config = {}
 
 -- =============================================
+-- VERSION (auto-bumped by CI — do not edit manually)
+-- =============================================
+Config.VERSION = "1.0.0"
+
+-- =============================================
 -- MONITORING REQUIREMENTS
 -- =============================================
 Config.MINIMUM_LEVEL = 17           -- Minimum bee level to count as "meeting requirement"

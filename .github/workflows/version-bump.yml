@@ -1,0 +1,70 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/workflows/**'
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep -oP 'Config\.VERSION\s*=\s*"\K[^"]+' modules/config.lua)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current version: $VERSION"
+
+      - name: Determine bump type from commit message
+        id: bump
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          BUMP="patch"
+
+          if echo "$MSG" | grep -qiE "BREAKING CHANGE|^[a-z]+\!:"; then
+            BUMP="major"
+          elif echo "$MSG" | grep -qiE "^feat(\(.+\))?:"; then
+            BUMP="minor"
+          fi
+
+          echo "type=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "Bump type: $BUMP"
+
+      - name: Calculate new version
+        id: new
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${{ steps.current.outputs.version }}"
+          case "${{ steps.bump.outputs.type }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW="$MAJOR.$MINOR.$PATCH"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "New version: $NEW"
+
+      - name: Update config.lua
+        run: |
+          sed -i "s/Config\.VERSION = \".*\"/Config.VERSION = \"${{ steps.new.outputs.version }}\"/" modules/config.lua
+          grep "Config.VERSION" modules/config.lua
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add modules/config.lua
+          git commit -m "chore: bump version to ${{ steps.new.outputs.version }} [skip ci]"
+          git tag "v${{ steps.new.outputs.version }}"
+          git push
+          git push --tags
