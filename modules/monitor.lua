@@ -28,6 +28,12 @@ local GUI = nil
 
 -- Initialize with dependencies
 function Monitor.Init(config, scanner, webhook, chat, gui)
+    -- Clean up existing connections first (in case of re-init)
+    for _, conn in ipairs(Monitor.Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    Monitor.Connections = {}
+    
     Config = config
     Scanner = scanner
     Webhook = webhook
