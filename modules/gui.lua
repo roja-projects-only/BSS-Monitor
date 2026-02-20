@@ -219,7 +219,6 @@ function GUI.Create()
     panel.BackgroundColor3 = C.bg
     panel.BorderSizePixel = 0
     panel.Active = true
-    panel.Draggable = true
     panel.ClipsDescendants = true
     panel.Parent = screenGui
     addCorner(panel, 12)
@@ -233,7 +232,32 @@ function GUI.Create()
     titleBar.Size = UDim2.new(1, 0, 0, COLLAPSED_HEIGHT)
     titleBar.BackgroundColor3 = C.surface
     titleBar.BorderSizePixel = 0
+    titleBar.Active = true
     titleBar.Parent = panel
+
+    -- Custom drag: only title bar moves the panel
+    local dragging = false
+    local dragStart, startPos
+
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = panel.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 
     local titleCorner = Instance.new("UICorner")
     titleCorner.CornerRadius = UDim.new(0, 12)
