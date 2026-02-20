@@ -557,6 +557,27 @@ function GUI.Create()
     GUI.UpdatePlayerCount()
     GUI.UpdatePlayerList()
 
+    -- Live refresh timer (1s) for grace period countdown
+    local refreshConn
+    refreshConn = game:GetService("RunService").Heartbeat:Connect(function()
+        -- Only refresh once per second
+        if not GUI._lastRefresh then GUI._lastRefresh = 0 end
+        if tick() - GUI._lastRefresh < 1 then return end
+        GUI._lastRefresh = tick()
+        
+        -- Only refresh if there are players in grace period
+        if Monitor and Monitor.PlayerJoinTimes then
+            local gracePeriod = Config and Config.GRACE_PERIOD or 20
+            for name, joinTime in pairs(Monitor.PlayerJoinTimes) do
+                if tick() - joinTime < gracePeriod then
+                    GUI.UpdatePlayerList()
+                    break
+                end
+            end
+        end
+    end)
+    table.insert(GUI.Connections, refreshConn)
+
     table.insert(GUI.Connections, Players.PlayerAdded:Connect(function() GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end))
     table.insert(GUI.Connections, Players.PlayerRemoving:Connect(function() task.wait(0.1) GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end))
 
@@ -657,10 +678,22 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
     -- Check if whitelisted
     local isWhitelisted = Config and Config.IsWhitelisted(playerName)
     
+    -- Check if in grace period
+    local inGrace = false
+    local graceRemaining = 0
+    if Monitor and Monitor.PlayerJoinTimes and Monitor.PlayerJoinTimes[playerName] then
+        local elapsed = tick() - Monitor.PlayerJoinTimes[playerName]
+        local gracePeriod = Config and Config.GRACE_PERIOD or 20
+        if elapsed < gracePeriod then
+            inGrace = true
+            graceRemaining = math.ceil(gracePeriod - elapsed)
+        end
+    end
+    
     -- Determine colors & stats
     if isWhitelisted then
         if hiveData then
-            statsLabel.Text = string.format("Lv%.1f  WL", hiveData.avgLevel or 0)
+            statsLabel.Text = string.format("LVL %.1f  WL", hiveData.avgLevel or 0)
         else
             statsLabel.Text = "whitelisted"
         end
@@ -668,6 +701,11 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
         nameLabel.TextColor3 = C.blue
         indicator.BackgroundColor3 = C.blue
         entry.BackgroundColor3 = C.blueBg
+    elseif inGrace then
+        statsLabel.Text = string.format("\u{23f3} %ds", graceRemaining)
+        statsLabel.TextColor3 = C.orange
+        indicator.BackgroundColor3 = C.orange
+        entry.BackgroundColor3 = C.orangeBg
     elseif hiveData then
         local avgLvl = hiveData.avgLevel or 0
         local totalBees = hiveData.totalBees or 0
@@ -685,7 +723,7 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
             pct = (beesAtOrAbove / totalBees) * 100
         end
         
-        statsLabel.Text = string.format("Lv%.1f  %.0f%%", avgLvl, pct)
+        statsLabel.Text = string.format("LVL %.1f  %.0f%%", avgLvl, pct)
         
         local reqPct = Config and (Config.REQUIRED_PERCENT or 0.9) * 100 or 90
         if pct >= reqPct then
