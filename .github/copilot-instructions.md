@@ -224,7 +224,7 @@ _G.BSSMonitorConfig = {
     MAX_PLAYERS = 6,            -- Private server max
 
     -- Mobile
-    MOBILE_MODE = true,             -- nil=auto, true=force mobile, false=force desktop
+    MOBILE_MODE = nil,              -- nil=auto, true=force mobile, false=force desktop
 
     -- Discord Notification
     DISCORD_USER_ID = "",       -- Discord user ID for @mention in ban notifications
