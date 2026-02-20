@@ -365,9 +365,15 @@ function GUI.Create()
         return card, val
     end
 
-    local isMobileForced = Config and Config.MOBILE_MODE
-    local isMobileDetected = Chat and Chat.IsMobile()
-    local isMobile = isMobileForced ~= nil and isMobileForced or isMobileDetected
+    -- Determine mobile mode (Config.MOBILE_MODE overrides auto-detect)
+    local isMobile
+    if Config and Config.MOBILE_MODE ~= nil then
+        isMobile = Config.MOBILE_MODE
+    elseif Chat and Chat.IsMobile then
+        isMobile = Chat.IsMobile()
+    else
+        isMobile = false
+    end
     local platformStr = isMobile and "📱" or "🖥️"
 
     local _, playerCountVal = statCard(0, 0.5, #Players:GetPlayers() .. "/" .. (Config and Config.MAX_PLAYERS or 6), C.accent, "Players")
