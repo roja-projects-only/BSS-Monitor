@@ -740,9 +740,9 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
             entry.BackgroundColor3 = C.redBg
         end
     else
-        statsLabel.Text = "scanning..."
-        statsLabel.TextColor3 = C.textDim
-        indicator.BackgroundColor3 = C.textDim
+        statsLabel.Text = "SCANNING..."
+        statsLabel.TextColor3 = C.blue
+        indicator.BackgroundColor3 = C.blue
     end
     
     return entry
