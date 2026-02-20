@@ -12,9 +12,79 @@ local Chat = {}
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 
--- Detect platform
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+-- Detect platform with multiple signals for reliability
+local isMobile = nil
+
+local function detectMobile()
+    -- Signal 1: Touch + no keyboard (standard check)
+    local touch = UserInputService.TouchEnabled
+    local keyboard = UserInputService.KeyboardEnabled
+    if touch == true and keyboard == false then
+        return true
+    end
+    if touch == false then
+        return false
+    end
+
+    -- Signal 2: GuiService - IsTenFootInterface means console, not mobile
+    local isTenFoot = false
+    pcall(function() isTenFoot = GuiService.IsTenFootInterface end)
+    if isTenFoot then
+        return false
+    end
+
+    -- Signal 3: Screen size heuristic (mobile screens are small)
+    local viewportX = nil
+    pcall(function()
+        local cam = workspace.CurrentCamera
+        if cam then viewportX = cam.ViewportSize.X end
+    end)
+    if viewportX then
+        if viewportX < 800 then return true end
+        if viewportX > 1200 and keyboard ~= false then return false end
+    end
+
+    -- Signal 4: Mouse presence
+    local hasMouse = UserInputService.MouseEnabled
+    if hasMouse == true and touch ~= true then
+        return false
+    end
+
+    -- Signal 5: Gyroscope (only present on mobile devices)
+    local hasGyro = false
+    pcall(function() hasGyro = UserInputService.GyroscopeEnabled end)
+    if hasGyro == true then
+        return true
+    end
+
+    -- Signal 6: Gamepad (if gamepad only, it's console, not mobile)
+    local hasGamepad = UserInputService.GamepadEnabled
+    if hasGamepad == true and touch ~= true then
+        return false
+    end
+
+    -- Fallback: if touch is true and we couldn't disprove mobile, assume mobile
+    if touch == true then
+        return true
+    end
+
+    -- Default to desktop
+    return false
+end
+
+isMobile = detectMobile()
+
+-- Re-check after a short delay in case services weren't ready at load time
+task.defer(function()
+    task.wait(1)
+    local recheck = detectMobile()
+    if recheck ~= isMobile then
+        isMobile = recheck
+        print("[BSS Monitor] Platform re-detected: " .. (isMobile and "Mobile" or "Desktop"))
+    end
+end)
 
 -- Get the chat input TextBox from CoreGui
 local function getChatInputBox()
