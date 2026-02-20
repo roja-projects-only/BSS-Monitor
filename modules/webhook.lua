@@ -28,7 +28,8 @@ local function httpRequest(options)
 end
 
 -- Send a webhook message
-function Webhook.Send(config, title, description, color, fields)
+-- content: optional text outside embed (used for @mentions that trigger mobile push notifications)
+function Webhook.Send(config, title, description, color, fields, content)
     if not config.WEBHOOK_ENABLED or config.WEBHOOK_URL == "" then
         return false, "Webhook disabled or URL not set"
     end
@@ -47,6 +48,10 @@ function Webhook.Send(config, title, description, color, fields)
     local data = {
         embeds = {embed}
     }
+    
+    if content and content ~= "" then
+        data.content = content
+    end
     
     local success, result = pcall(function()
         return httpRequest({
@@ -237,6 +242,67 @@ function Webhook.SendBanVerifiedNotification(config, playerName, reason, attempt
     local color = 3066993 -- Green
     
     return Webhook.Send(config, title, description, color, fields)
+end
+
+-- Mobile ban notification with @mention ping and tap-to-copy command
+function Webhook.SendMobileBanNotification(config, playerName, hiveData, checkResult)
+    local fields = {
+        {
+            name = "Player",
+            value = playerName,
+            inline = true
+        },
+        {
+            name = "Total Bees",
+            value = tostring(hiveData.totalBees),
+            inline = true
+        },
+        {
+            name = "Average Level",
+            value = string.format("%.1f", hiveData.avgLevel),
+            inline = true
+        },
+        {
+            name = "Bees at Lv" .. config.MINIMUM_LEVEL .. "+",
+            value = string.format("%d (%.1f%%)", checkResult.beesAtLevel, checkResult.percentAtLevel * 100),
+            inline = true
+        },
+        {
+            name = "Required",
+            value = string.format("%.0f%%", config.REQUIRED_PERCENT * 100),
+            inline = true
+        },
+        {
+            name = "Gifted Bees",
+            value = tostring(hiveData.giftedCount),
+            inline = true
+        }
+    }
+    
+    local command = "/ban " .. playerName
+    local title = "🚫 Player Needs Ban"
+    local description = string.format(
+        "**%s** does not meet hive requirements.\n\n**Command (tap to copy):**\n```\n%s\n```",
+        playerName, command
+    )
+    local color = 15158332 -- Red
+    
+    if config.DRY_RUN then
+        title = "⚠️ [DRY RUN] Player Would Need Ban"
+        description = string.format(
+            "**%s** would need ban (DRY_RUN mode active)\n\n**Command:**\n```\n%s\n```",
+            playerName, command
+        )
+        color = 16776960 -- Yellow
+    end
+    
+    -- @mention content triggers mobile push notification
+    local content = nil
+    if config.DISCORD_USER_ID and config.DISCORD_USER_ID ~= "" then
+        content = "<@" .. config.DISCORD_USER_ID .. ">"
+    end
+    
+    return Webhook.Send(config, title, description, color, fields, content)
 end
 
 return Webhook

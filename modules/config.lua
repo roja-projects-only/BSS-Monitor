@@ -47,21 +47,16 @@ Config.DRY_RUN = true               -- If true, logs but doesn't actually ban (f
 Config.AUTO_START = true            -- If true, starts monitoring immediately on load
 Config.SHOW_GUI = false             -- If false, runs without GUI (headless mode)
 Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some servers only support kick)
+
 -- =============================================
 -- MOBILE SETTINGS (auto-detected, but can override)
 -- =============================================
 Config.MOBILE_MODE = nil            -- nil = auto-detect, true = force mobile, false = force desktop
-Config.MOBILE_CLIPBOARD = true      -- Copy kick command to clipboard on mobile
-Config.MOBILE_PREFILL = true        -- Pre-fill chat input on mobile (user sends manually)
-Config.MOBILE_SOUND = true          -- Play sound alert on mobile when kick needed
 
 -- =============================================
--- BRIDGE SETTINGS (Mobile Automation Bridge)
+-- DISCORD NOTIFICATION SETTINGS
 -- =============================================
-Config.BRIDGE_ENABLED = false       -- Enable bridge for mobile automation
-Config.BRIDGE_URL = ""              -- Bridge server URL (e.g., "https://your-app.vercel.app")
-Config.BRIDGE_API_KEY = ""          -- API key for authentication
-Config.BRIDGE_TIMEOUT = 5           -- Request timeout in seconds
+Config.DISCORD_USER_ID = ""         -- Discord user ID for @mention in ban notifications (e.g., "123456789012345678")
 -- =============================================
 -- HIVE GRID CONSTANTS
 -- =============================================

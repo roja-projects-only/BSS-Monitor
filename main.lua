@@ -71,7 +71,6 @@ local Scanner = loadModule("scanner")
 local Webhook = loadModule("webhook")
 local Chat = loadModule("chat")
 local GUI = loadModule("gui")
-local Bridge = loadModule("bridge")
 local Monitor = loadModule("monitor")
 
 -- Validate critical modules
@@ -81,9 +80,8 @@ if not Config or not Scanner or not Monitor then
 end
 
 -- Initialize modules
-Bridge.Init(Config)
 GUI.Init(Config, Monitor)
-Monitor.Init(Config, Scanner, Webhook, Chat, GUI, Bridge)
+Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
 -- Create GUI (always show minimal)
 GUI.Create()
@@ -103,7 +101,6 @@ _G.BSSMonitor = {
     Webhook = Webhook,
     Chat = Chat,
     GUI = GUI,
-    Bridge = Bridge,
     Monitor = Monitor,
     _connections = {}, -- Store connections for cleanup
     
@@ -120,7 +117,6 @@ _G.BSSMonitor = {
     hideGui = function() GUI.Hide() end,
     testChat = function() return Chat.SendTestMessage() end,
     testWebhook = function() return Webhook.Send(Config, "Test", "Webhook test", 3066993, {}) end,
-    testBridge = function() return Bridge.TestConnection() end,
     
     -- Manual cleanup function
     cleanup = function()

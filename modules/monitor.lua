@@ -24,16 +24,14 @@ local Scanner = nil
 local Webhook = nil
 local Chat = nil
 local GUI = nil
-local Bridge = nil
 
 -- Initialize with dependencies
-function Monitor.Init(config, scanner, webhook, chat, gui, bridge)
+function Monitor.Init(config, scanner, webhook, chat, gui)
     Config = config
     Scanner = scanner
     Webhook = webhook
     Chat = chat
     GUI = gui
-    Bridge = bridge
     
     -- Track existing players
     for _, player in ipairs(Players:GetPlayers()) do
@@ -101,8 +99,6 @@ function Monitor.Log(actionType, message)
         warn(prefix, "✅🚫", message)
     elseif actionType == "BanFailed" then
         warn(prefix, "❌🚫", message)
-    elseif actionType == "Bridge" then
-        print(prefix, "🌉", message)
     elseif actionType == "Pass" then
         print(prefix, "✅", message)
     elseif actionType == "Skip" then
@@ -125,7 +121,7 @@ function Monitor.IsPlayerInServer(playerName)
 end
 
 -- Execute ban with verification (waits to confirm player left)
--- On mobile: copies to clipboard + prefills chat (user must send manually)
+-- On mobile: sends Discord webhook with @mention and tap-to-copy /ban command
 function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
     maxRetries = maxRetries or 3
     timeout = timeout or 10 -- seconds to wait for player to leave
@@ -142,87 +138,18 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         isMobile = Config.MOBILE_MODE
     end
     
-    -- MOBILE MODE
+    -- MOBILE MODE: Send webhook notification with @mention and tap-to-copy command
     if isMobile then
-        -- Try bridge first if available
-        if Bridge and Bridge.IsAvailable() then
-            Monitor.Log("Bridge", "🌉 Attempting bridge command for: " .. playerName)
-            
-            local cmdType = Config.USE_KICK and "kick" or "ban"
-            local success, error = Bridge.SendCommand(cmdType, playerName)
-            
-            if success then
-                Monitor.Log("Bridge", "✅ Bridge command sent successfully: " .. cmdType .. " " .. playerName)
-                
-                -- Mark as pending bridge action
-                Monitor.BannedPlayers[playerName] = {
-                    time = tick(),
-                    reason = reason,
-                    bridgeMode = true,
-                    bridgeSuccess = true
-                }
-                
-                -- Send webhook notification
-                if Webhook then
-                    task.spawn(function()
-                        Webhook.SendBanNotification(playerName, reason, "🌉 Bridge automation active")
-                    end)
-                end
-                
-                return true, "Bridge (automated)"
-            else
-                Monitor.Log("Bridge", "❌ Bridge failed: " .. error .. " - falling back to clipboard mode")
-                -- Fall through to clipboard mode
-            end
-        end
+        Monitor.Log("Mobile", "📱 Mobile mode - sending webhook notification for: " .. playerName)
         
-        -- Fallback to clipboard mode
-        local cmd = Config.USE_KICK and "/kick" or "/ban"
-        local command = cmd .. " " .. playerName
-        
-        Monitor.Log("Mobile", "📱 Mobile mode - preparing kick command for: " .. playerName)
-        
-        -- Copy to clipboard
-        if Config.MOBILE_CLIPBOARD then
-            Chat.CopyKickCommand(playerName)
-            Monitor.Log("Mobile", "📋 Command copied to clipboard: " .. command)
-        end
-        
-        -- Prefill chat
-        if Config.MOBILE_PREFILL then
-            Chat.PrefillKickCommand(playerName)
-            Monitor.Log("Mobile", "💬 Command prefilled in chat - PRESS SEND!")
-        end
-        
-        -- Play sound alert
-        if Config.MOBILE_SOUND then
-            pcall(function()
-                local sound = Instance.new("Sound")
-                sound.SoundId = "rbxassetid://9125402735" -- Alert sound
-                sound.Volume = 1
-                sound.Parent = game:GetService("SoundService")
-                sound:Play()
-                task.delay(2, function() sound:Destroy() end)
-            end)
-        end
-        
-        -- Mark as pending manual action
         Monitor.BannedPlayers[playerName] = {
             time = tick(),
             reason = reason,
             mobileMode = true,
-            manualPending = true
+            webhookNotified = true
         }
         
-        -- Send webhook notification
-        if Webhook then
-            task.spawn(function()
-                local bridgeStatus = Bridge and Bridge.IsAvailable() and "Bridge failed - " or ""
-                Webhook.SendBanNotification(playerName, reason, "⚠️ MOBILE - " .. bridgeStatus .. "Manual send required!")
-            end)
-        end
-        
-        return true, "Mobile (clipboard + prefill)"
+        return true, "Mobile (webhook notified)"
     end
     
     -- DESKTOP MODE (auto-send with verification)
@@ -363,8 +290,18 @@ function Monitor.CheckPlayer(playerName, hiveData)
         -- Player fails requirements - BAN
         Monitor.Log("Ban", playerName .. ": " .. checkResult.reason)
         
-        -- Send webhook first
-        Webhook.SendBanNotification(Config, playerName, hiveData, checkResult)
+        -- Determine platform for appropriate webhook
+        local isMobile = Chat.IsMobile()
+        if Config.MOBILE_MODE ~= nil then
+            isMobile = Config.MOBILE_MODE
+        end
+        
+        -- Send webhook (mobile gets @mention + tap-to-copy command, desktop gets standard notification)
+        if isMobile then
+            Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+        else
+            Webhook.SendBanNotification(Config, playerName, hiveData, checkResult)
+        end
         
         -- Execute ban with verification (unless dry run)
         if not Config.DRY_RUN then
