@@ -17,6 +17,7 @@ Monitor.CheckedPlayers = {}     -- Track who passed checks
 Monitor.ActionLog = {}          -- Log of actions taken
 Monitor.LastScanResults = {}    -- Last scan results
 Monitor.PendingBans = {}        -- Players waiting for ban verification
+Monitor.Connections = {}        -- Store RBXScriptConnections for cleanup
 
 -- Dependencies (set by Init)
 local Config = nil
@@ -77,11 +78,9 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
         end
     end)
     
-    -- Store connections in _G for cleanup on re-execution
-    if _G.BSSMonitor and _G.BSSMonitor._connections then
-        table.insert(_G.BSSMonitor._connections, playerAddedConn)
-        table.insert(_G.BSSMonitor._connections, playerRemovingConn)
-    end
+    -- Store connections on Monitor for cleanup
+    table.insert(Monitor.Connections, playerAddedConn)
+    table.insert(Monitor.Connections, playerRemovingConn)
     
     return Monitor
 end

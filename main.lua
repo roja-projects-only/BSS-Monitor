@@ -23,14 +23,24 @@ if _G.BSSMonitor then
     end)
     
     pcall(function()
-        -- Destroy GUI
-        if _G.BSSMonitor.GUI and _G.BSSMonitor.GUI.ScreenGui then
-            _G.BSSMonitor.GUI.ScreenGui:Destroy()
+        -- Destroy GUI and its connections
+        if _G.BSSMonitor.GUI then
+            if _G.BSSMonitor.GUI.ScreenGui then
+                _G.BSSMonitor.GUI.ScreenGui:Destroy()
+            end
+            for _, conn in ipairs(_G.BSSMonitor.GUI.Connections or {}) do
+                pcall(function() conn:Disconnect() end)
+            end
         end
     end)
     
     pcall(function()
-        -- Disconnect all connections if stored
+        -- Disconnect all stored connections (Monitor + _G level)
+        if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.Connections then
+            for _, conn in ipairs(_G.BSSMonitor.Monitor.Connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+        end
         if _G.BSSMonitor._connections then
             for _, conn in pairs(_G.BSSMonitor._connections) do
                 if conn and typeof(conn) == "RBXScriptConnection" then

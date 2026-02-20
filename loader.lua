@@ -27,6 +27,51 @@
 local REPO_BASE = "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
 local CACHE_BUST = "?v=" .. tostring(os.time())
 
+-- ============================================
+-- CLEANUP PREVIOUS SESSION (if re-executed)
+-- ============================================
+if _G.BSSMonitor then
+    print("🐝 BSS Monitor: Previous session detected, cleaning up...")
+    
+    pcall(function()
+        if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.IsRunning then
+            _G.BSSMonitor.Monitor.Stop()
+        end
+    end)
+    
+    pcall(function()
+        -- Destroy GUI and its connections
+        if _G.BSSMonitor.GUI then
+            if _G.BSSMonitor.GUI.ScreenGui then
+                _G.BSSMonitor.GUI.ScreenGui:Destroy()
+            end
+            for _, conn in ipairs(_G.BSSMonitor.GUI.Connections or {}) do
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+    end)
+    
+    pcall(function()
+        -- Disconnect all stored connections (Monitor + _G level)
+        if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.Connections then
+            for _, conn in ipairs(_G.BSSMonitor.Monitor.Connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+        if _G.BSSMonitor._connections then
+            for _, conn in pairs(_G.BSSMonitor._connections) do
+                if conn and typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
+            end
+        end
+    end)
+    
+    _G.BSSMonitor = nil
+    print("  ✓ Previous session cleaned up")
+    task.wait(0.5)
+end
+
 -- Check for custom config
 local customConfig = _G.BSSMonitorConfig
 
@@ -137,6 +182,7 @@ _G.BSSMonitor = {
     Chat = Chat,
     GUI = GUI,
     Monitor = Monitor,
+    _connections = {},  -- Store connections for cleanup on re-execution
     
     -- Convenience functions
     start = function() Monitor.Start() end,
@@ -153,6 +199,21 @@ _G.BSSMonitor = {
     -- Test functions
     testChat = function() return Chat.SendTestMessage() end,
     testWebhook = function() return Webhook.Send(Config, "Test", "Webhook test successful!", 3066993, {}) end,
+    
+    -- Manual cleanup
+    cleanup = function()
+        print("🐝 BSS Monitor: Manual cleanup...")
+        pcall(function() Monitor.Stop() end)
+        pcall(function() if GUI then GUI.ScreenGui:Destroy() end end)
+        pcall(function()
+            for _, conn in ipairs(GUI and GUI.Connections or {}) do conn:Disconnect() end
+        end)
+        pcall(function()
+            for _, conn in ipairs(_G.BSSMonitor._connections) do conn:Disconnect() end
+        end)
+        _G.BSSMonitor = nil
+        print("  ✓ Cleaned up")
+    end,
     
     -- Version
     version = "1.0.0"

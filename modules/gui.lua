@@ -13,6 +13,7 @@ GUI.LastScanResults = {}
 GUI.CheckedPlayers = {}
 GUI.IsCollapsed = false
 GUI.IsHidden = false
+GUI.Connections = {}  -- Store connections for cleanup
 
 local Config = nil
 local Monitor = nil
@@ -95,9 +96,14 @@ local function addPadding(parent, padding)
 end
 
 function GUI.Create()
+    -- Clean up previous GUI instance
     pcall(function()
         if GUI.ScreenGui then GUI.ScreenGui:Destroy() end
     end)
+    for _, conn in ipairs(GUI.Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    GUI.Connections = {}
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BSSMonitorGui"
@@ -405,8 +411,8 @@ function GUI.Create()
     GUI.UpdatePlayerCount()
     GUI.UpdatePlayerList()
 
-    Players.PlayerAdded:Connect(function() GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end)
-    Players.PlayerRemoving:Connect(function() task.wait(0.1) GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end)
+    table.insert(GUI.Connections, Players.PlayerAdded:Connect(function() GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end))
+    table.insert(GUI.Connections, Players.PlayerRemoving:Connect(function() task.wait(0.1) GUI.UpdatePlayerCount() GUI.UpdatePlayerList() end))
 
     return screenGui
 end
