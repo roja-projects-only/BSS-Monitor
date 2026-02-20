@@ -210,14 +210,20 @@ function Chat.IsAvailable()
     return false, "Chat input not found"
 end
 
--- Check platform
+-- Override for Config.MOBILE_MODE (set externally after load)
+Chat.MobileOverride = nil
+
+-- Check platform (respects forced override)
 function Chat.IsMobile()
+    if Chat.MobileOverride ~= nil then
+        return Chat.MobileOverride
+    end
     return isMobile
 end
 
 -- Get platform name
 function Chat.GetPlatform()
-    return isMobile and "Mobile" or "Desktop"
+    return Chat.IsMobile() and "Mobile" or "Desktop"
 end
 
 return Chat

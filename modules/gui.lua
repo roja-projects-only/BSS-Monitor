@@ -281,7 +281,9 @@ function GUI.Create()
     statusTitle.Size = UDim2.new(1, 0, 0.35, 0)
     statusTitle.Position = UDim2.new(0, 0, 0.58, 0)
     statusTitle.BackgroundTransparency = 1
-    local platformIcon = (Chat and Chat.IsMobile()) and "📱" or "🖥️"
+    local isMobileForced = Config and Config.MOBILE_MODE
+    local isMobileDetected = Chat and Chat.IsMobile()
+    local platformIcon = (isMobileForced ~= nil and isMobileForced or isMobileDetected) and "📱" or "🖥️"
     statusTitle.Text = "Status · " .. platformIcon
     statusTitle.TextColor3 = Colors.textMuted
     statusTitle.TextSize = 10
@@ -493,8 +495,22 @@ local function createPlayerEntry(playerName, hiveData, checkedData)
     statsLabel.TextXAlignment = Enum.TextXAlignment.Right
     statsLabel.Parent = entry
     
+    -- Check if whitelisted
+    local isWhitelisted = Config and Config.IsWhitelisted(playerName)
+    
     -- Determine stats to display
-    if hiveData then
+    if isWhitelisted then
+        -- Whitelisted players get blue styling regardless of hive data
+        if hiveData then
+            local avgLvl = hiveData.avgLevel or 0
+            statsLabel.Text = string.format("Lv%.1f  WL", avgLvl)
+        else
+            statsLabel.Text = "whitelisted"
+        end
+        statsLabel.TextColor3 = Colors.info
+        nameLabel.TextColor3 = Colors.info
+        entry.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
+    elseif hiveData then
         local avgLvl = hiveData.avgLevel or 0
         local totalBees = hiveData.totalBees or 0
         

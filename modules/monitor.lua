@@ -141,11 +141,8 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         return true, "Not in server"
     end
     
-    -- Determine if we're on mobile
+    -- Determine if we're on mobile (Chat.IsMobile() already respects Config.MOBILE_MODE override)
     local isMobile = Chat.IsMobile()
-    if Config.MOBILE_MODE ~= nil then
-        isMobile = Config.MOBILE_MODE
-    end
     
     -- Mobile uses shorter initial timeout (3s) before falling back to webhook
     local initialTimeout = isMobile and 3 or timeout

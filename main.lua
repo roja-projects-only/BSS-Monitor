@@ -89,6 +89,11 @@ if not Config or not Scanner or not Monitor then
     return
 end
 
+-- Apply MOBILE_MODE override to Chat module
+if Chat and Config.MOBILE_MODE ~= nil then
+    Chat.MobileOverride = Config.MOBILE_MODE
+end
+
 -- Initialize modules
 GUI.Init(Config, Monitor, Chat)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
@@ -126,7 +131,7 @@ _G.BSSMonitor = {
     showGui = function() GUI.Show() end,
     hideGui = function() GUI.Hide() end,
     testChat = function() return Chat.SendTestMessage() end,
-    testWebhook = function() return Webhook.Send(Config, "Test", "Webhook test", 3066993, {}) end,
+    testWebhook = function() return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 }) end,
     
     -- Manual cleanup function
     cleanup = function()
