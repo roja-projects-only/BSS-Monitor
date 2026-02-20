@@ -10,7 +10,7 @@ local Config = {}
 -- =============================================
 Config.MINIMUM_LEVEL = 17           -- Minimum bee level to count as "meeting requirement"
 Config.REQUIRED_PERCENT = 0.80      -- 80% of bees must be at or above MINIMUM_LEVEL
-Config.MIN_BEES_REQUIRED = 35       -- Minimum bees to have (ignore if less, might be new player)
+Config.MIN_BEES_REQUIRED = 45       -- Minimum bees to have (ignore if less, might be new player)
 
 -- =============================================
 -- TIMING SETTINGS
@@ -28,7 +28,8 @@ Config.MAX_PLAYERS = 6              -- Max players in private server
 -- WHITELIST (these players will NEVER be banned)
 -- =============================================
 Config.WHITELIST = {
-    "a210w",                        -- Owner
+    "a210w",
+    "a21_0w",                        -- Owner
     -- Add more usernames here:
     -- "FriendName1",
     -- "FriendName2",
@@ -43,9 +44,9 @@ Config.WEBHOOK_URL = ""             -- Set your Discord webhook URL here
 -- =============================================
 -- BEHAVIOR SETTINGS
 -- =============================================
-Config.DRY_RUN = true               -- If true, logs but doesn't actually ban (for testing)
+Config.DRY_RUN = false               -- If true, logs but doesn't actually ban (for testing)
 Config.AUTO_START = true            -- If true, starts monitoring immediately on load
-Config.SHOW_GUI = false             -- If false, runs without GUI (headless mode)
+Config.SHOW_GUI = true             -- If false, runs without GUI (headless mode)
 Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some servers only support kick)
 
 -- =============================================
