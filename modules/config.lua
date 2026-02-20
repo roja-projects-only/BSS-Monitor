@@ -58,6 +58,7 @@ Config.MOBILE_MODE = nil            -- nil = auto-detect, true = force mobile, f
 -- DISCORD NOTIFICATION SETTINGS
 -- =============================================
 Config.DISCORD_USER_ID = ""         -- Discord user ID for @mention in ban notifications (e.g., "123456789012345678")
+Config.MOBILE_RENOTIFY_INTERVAL = 300  -- Seconds between re-sending webhook if player is still in server (default 5 min)
 -- =============================================
 -- HIVE GRID CONSTANTS
 -- =============================================

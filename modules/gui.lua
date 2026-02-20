@@ -317,7 +317,6 @@ function GUI.Create()
     playerList.ScrollBarImageColor3 = Colors.accent
     playerList.ScrollBarImageTransparency = 0.3
     playerList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    playerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
     playerList.ScrollingDirection = Enum.ScrollingDirection.Y
     playerList.Parent = playerListContainer
     GUI.PlayerList = playerList
@@ -365,7 +364,6 @@ function GUI.Create()
     bannedList.ScrollBarImageColor3 = Colors.danger
     bannedList.ScrollBarImageTransparency = 0.3
     bannedList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    bannedList.AutomaticCanvasSize = Enum.AutomaticSize.Y
     bannedList.ScrollingDirection = Enum.ScrollingDirection.Y
     bannedList.Parent = bannedListContainer
     GUI.BannedList = bannedList
@@ -556,6 +554,15 @@ function GUI.UpdatePlayerList()
             emptyLabel.Font = Enum.Font.Gotham
             emptyLabel.Parent = GUI.PlayerList
         end
+        
+        -- Update canvas size manually (avoids stale AutomaticCanvasSize gaps)
+        local entryCount = 0
+        for _, child in ipairs(GUI.PlayerList:GetChildren()) do
+            if child:IsA("Frame") or child:IsA("TextLabel") then
+                entryCount = entryCount + 1
+            end
+        end
+        GUI.PlayerList.CanvasSize = UDim2.new(0, 0, 0, entryCount * 22 + math.max(0, entryCount - 1) * 3)
     end)
 end
 
@@ -634,6 +641,15 @@ function GUI.UpdateBannedList(bannedPlayers)
             noneLabel.Font = Enum.Font.Gotham
             noneLabel.Parent = GUI.BannedList
         end
+        
+        -- Update canvas size manually (avoids stale AutomaticCanvasSize gaps)
+        local entryCount = 0
+        for _, child in ipairs(GUI.BannedList:GetChildren()) do
+            if child:IsA("Frame") or child:IsA("TextLabel") then
+                entryCount = entryCount + 1
+            end
+        end
+        GUI.BannedList.CanvasSize = UDim2.new(0, 0, 0, entryCount * 20 + math.max(0, entryCount - 1) * 3)
     end)
 end
 

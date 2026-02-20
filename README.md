@@ -45,15 +45,15 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 |--------|---------|-------------|
 | `MINIMUM_LEVEL` | 17 | Minimum bee level to count as "meeting requirement" |
 | `REQUIRED_PERCENT` | 0.80 | Percentage of bees that must meet MINIMUM_LEVEL (0.80 = 80%) |
-| `MIN_BEES_REQUIRED` | 35 | Skip check if player has fewer bees (might be new) |
+| `MIN_BEES_REQUIRED` | 45 | Skip check if player has fewer bees (might be new) |
 | `CHECK_INTERVAL` | 30 | Seconds between automatic scans |
 | `GRACE_PERIOD` | 20 | Seconds to wait after player joins before checking |
 | `BAN_COOLDOWN` | 5 | Seconds between ban commands |
 | `MAX_PLAYERS` | 6 | Max players in private server |
-| `DRY_RUN` | true | If true, logs but doesn't actually kick/ban |
+| `DRY_RUN` | false | If true, logs but doesn't actually kick/ban |
 | `AUTO_START` | true | Start monitoring automatically on load |
-| `SHOW_GUI` | false | Show GUI (disabled by default for compatibility) |
-| `USE_KICK` | true | Use `/kick` instead of `/ban` (some servers only support kick) |
+| `SHOW_GUI` | true | Show GUI (disabled by default for compatibility) |
+| `USE_KICK` | false | Use `/kick` instead of `/ban` (some servers only support kick) |
 | `MOBILE_MODE` | nil | nil = auto-detect, true = force mobile, false = force desktop |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |

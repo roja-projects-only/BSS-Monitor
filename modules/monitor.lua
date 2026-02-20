@@ -60,11 +60,20 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
             Monitor.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
         end
         
+        -- Check if this was a banned player (mobile or failed desktop) - mark as verified
+        if Monitor.BannedPlayers[player.Name] and not Monitor.BannedPlayers[player.Name].verified then
+            Monitor.BannedPlayers[player.Name].verified = true
+            Monitor.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
+            if Webhook then
+                Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", Monitor.BannedPlayers[player.Name].attempts or 0)
+            end
+        end
+        
         Monitor.PlayerJoinTimes[player.Name] = nil
         Monitor.CheckedPlayers[player.Name] = nil
         Monitor.Log("PlayerLeave", player.Name .. " left the server")
         if GUI then
-            GUI.UpdateLog()
+            GUI.UpdateDisplay(Monitor.LastScanResults, Monitor.CheckedPlayers, Monitor.BannedPlayers)
         end
     end)
     
@@ -355,6 +364,33 @@ function Monitor.RunCycle()
                 passedCount = passedCount + 1
             else
                 failedCount = failedCount + 1
+            end
+        end
+    end
+    
+    -- Mobile ban verification: re-check if mobile-banned players have left or need re-notification
+    for playerName, banData in pairs(Monitor.BannedPlayers) do
+        if banData.mobileMode and not banData.verified then
+            if not Monitor.IsPlayerInServer(playerName) then
+                -- Player left on their own
+                banData.verified = true
+                Monitor.Log("BanVerified", "✅ " .. playerName .. " has left the server")
+                if Webhook then
+                    Webhook.SendBanVerifiedNotification(Config, playerName, "Player left server", 0)
+                end
+            elseif banData.webhookNotified then
+                -- Player still in server, re-send webhook if enough time has passed
+                local timeSinceNotify = tick() - (banData.lastNotifyTime or banData.time)
+                local renotifyInterval = Config.MOBILE_RENOTIFY_INTERVAL or 300
+                if timeSinceNotify >= renotifyInterval then
+                    local hiveData = Monitor.LastScanResults[playerName]
+                    if hiveData then
+                        local checkResult = Scanner.CheckRequirements(hiveData, Config)
+                        Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+                        banData.lastNotifyTime = tick()
+                        Monitor.Log("Mobile", "📱 Re-sent webhook notification for: " .. playerName .. " (still in server)")
+                    end
+                end
             end
         end
     end
