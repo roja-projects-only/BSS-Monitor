@@ -129,7 +129,8 @@ function Monitor.IsPlayerInServer(playerName)
 end
 
 -- Execute ban with verification (waits to confirm player left)
--- On mobile: sends Discord webhook with @mention and tap-to-copy /ban command
+-- Both platforms try VirtualInputManager first.
+-- Mobile fallback: if VIM doesn't work, sends Discord webhook with @mention + tap-to-copy /ban command.
 function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
     maxRetries = maxRetries or 3
     timeout = timeout or 10 -- seconds to wait for player to leave
@@ -146,21 +147,9 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         isMobile = Config.MOBILE_MODE
     end
     
-    -- MOBILE MODE: Send webhook notification with @mention and tap-to-copy command
-    if isMobile then
-        Monitor.Log("Mobile", "📱 Mobile mode - sending webhook notification for: " .. playerName)
-        
-        Monitor.BannedPlayers[playerName] = {
-            time = tick(),
-            reason = reason,
-            mobileMode = true,
-            webhookNotified = true
-        }
-        
-        return true, "Mobile (webhook notified)"
-    end
+    -- Mobile uses shorter initial timeout (3s) before falling back to webhook
+    local initialTimeout = isMobile and 3 or timeout
     
-    -- DESKTOP MODE (auto-send with verification)
     -- Mark as pending ban
     Monitor.PendingBans[playerName] = {
         startTime = tick(),
@@ -169,10 +158,11 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
         verified = false
     }
     
+    -- ATTEMPT 1: Try VirtualInputManager (works on both platforms now)
     for attempt = 1, maxRetries do
         Monitor.PendingBans[playerName].attempts = attempt
         
-        -- Send kick/ban command based on config
+        -- Send kick/ban command
         local success, method
         if Config.USE_KICK then
             success, method = Chat.SendKickCommand(playerName)
@@ -186,12 +176,16 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
                 cmdType, playerName, attempt, maxRetries, method))
         else
             Monitor.Log("Error", "Failed to send " .. cmdType:lower() .. " command: " .. tostring(method))
+            -- On mobile, if VIM send fails on first attempt, skip straight to webhook fallback
+            if isMobile and attempt == 1 then
+                break
+            end
         end
         
         -- Wait and check if player left
+        local waitTimeout = (attempt == 1 and isMobile) and initialTimeout or timeout
         local waitStart = tick()
-        while tick() - waitStart < timeout do
-            -- Check if verified via PlayerRemoving event
+        while tick() - waitStart < waitTimeout do
             if Monitor.PendingBans[playerName] and Monitor.PendingBans[playerName].verified then
                 Monitor.BannedPlayers[playerName] = {
                     time = tick(),
@@ -203,7 +197,6 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
                 return true, "Verified (player left)"
             end
             
-            -- Also directly check if player is still in server
             if not Monitor.IsPlayerInServer(playerName) then
                 Monitor.BannedPlayers[playerName] = {
                     time = tick(),
@@ -219,18 +212,44 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
             task.wait(0.5)
         end
         
-        -- Player still in server after timeout
+        -- On mobile, after first attempt + short wait, fall back to webhook instead of retrying VIM
+        if isMobile then
+            break
+        end
+        
         if attempt < maxRetries then
             Monitor.Log("BanFailed", string.format("%s still in server after attempt %d, retrying...", 
                 playerName, attempt))
         end
     end
     
-    -- All retries exhausted, player still in server
+    -- MOBILE FALLBACK: VIM didn't work, send webhook notification with @mention + tap-to-copy
+    if isMobile then
+        Monitor.Log("Mobile", "📱 VIM ban didn't work for " .. playerName .. ", sending webhook notification")
+        
+        Monitor.BannedPlayers[playerName] = {
+            time = tick(),
+            reason = reason,
+            mobileMode = true,
+            webhookNotified = true,
+            lastNotifyTime = tick()
+        }
+        Monitor.PendingBans[playerName] = nil
+        
+        -- Send mobile webhook with @mention + tap-to-copy /ban command
+        local hiveData = Monitor.LastScanResults[playerName]
+        if hiveData and Webhook then
+            local checkResult = Scanner.CheckRequirements(hiveData, Config)
+            Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+        end
+        
+        return false, "Mobile fallback (webhook notified)"
+    end
+    
+    -- DESKTOP: All retries exhausted, player still in server
     Monitor.Log("BanFailed", string.format("❌ Failed to ban %s after %d attempts - player still in server!", 
         playerName, maxRetries))
     
-    -- Mark as failed ban
     Monitor.BannedPlayers[playerName] = {
         time = tick(),
         reason = reason,
@@ -240,7 +259,6 @@ function Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, time
     }
     Monitor.PendingBans[playerName] = nil
     
-    -- Send failure webhook
     if Webhook then
         Webhook.SendBanFailedNotification(Config, playerName, reason, maxRetries)
     end
@@ -298,21 +316,12 @@ function Monitor.CheckPlayer(playerName, hiveData)
         -- Player fails requirements - BAN
         Monitor.Log("Ban", playerName .. ": " .. checkResult.reason)
         
-        -- Determine platform for appropriate webhook
-        local isMobile = Chat.IsMobile()
-        if Config.MOBILE_MODE ~= nil then
-            isMobile = Config.MOBILE_MODE
-        end
-        
-        -- Send webhook (mobile gets @mention + tap-to-copy command, desktop gets standard notification)
-        if isMobile then
-            Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
-        else
-            Webhook.SendBanNotification(Config, playerName, hiveData, checkResult)
-        end
-        
         -- Execute ban with verification (unless dry run)
         if not Config.DRY_RUN then
+            -- Store hive data + check result for webhook use inside ExecuteBanWithVerification
+            local hiveDataRef = hiveData
+            local checkResultRef = checkResult
+            
             -- Run verification in a separate coroutine so it doesn't block
             coroutine.wrap(function()
                 local success, verifyResult = Monitor.ExecuteBanWithVerification(
@@ -324,8 +333,13 @@ function Monitor.CheckPlayer(playerName, hiveData)
                 
                 if success then
                     Monitor.Log("BanVerified", playerName .. ": " .. verifyResult)
+                    -- Send standard ban notification on successful auto-ban
+                    if Webhook then
+                        Webhook.SendBanNotification(Config, playerName, hiveDataRef, checkResultRef)
+                    end
                 else
                     Monitor.Log("BanFailed", playerName .. ": " .. verifyResult)
+                    -- Mobile fallback webhook is already sent inside ExecuteBanWithVerification
                 end
                 
                 if GUI then

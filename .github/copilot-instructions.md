@@ -4,8 +4,8 @@
 A modular Roblox Lua script for **Bee Swarm Simulator** private server monitoring. Scans player hives, checks level requirements, and auto-kicks non-compliant players via chat commands.
 
 **Platform Support:**
-- ✅ **Desktop**: Full auto-ban via VirtualInputManager
-- ⚠️ **Mobile**: Discord webhook notification with @mention ping and tap-to-copy `/ban` command
+- ✅ **Desktop**: Full auto-ban via VirtualInputManager, retries up to 3x
+- ✅ **Mobile**: Tries VirtualInputManager first (3s check), falls back to Discord webhook with @mention + tap-to-copy `/ban`
 
 ## Architecture
 
@@ -15,8 +15,8 @@ modules/
 ├── config.lua    # Configuration, whitelist, mobile & Discord notification settings
 ├── scanner.lua   # Hive scanning, bee level/gifted detection, requirement checking
 ├── monitor.lua   # Main monitoring loop, state management, ban verification
-├── chat.lua      # Chat command sender (platform-aware: desktop auto-send vs mobile webhook)
-├── webhook.lua   # Discord webhook notifications (standard + mobile tap-to-copy with @mention)
+├── chat.lua      # Chat command sender (VirtualInputManager on all platforms)
+├── webhook.lua   # Discord webhook notifications (standard + mobile fallback with @mention)
 └── gui.lua       # Collapsible GUI panel (player list, banned list, stats, draggable)
 ```
 
@@ -65,53 +65,47 @@ Scanner.ScanAllHives() → {playerName: hiveData}
     ↓
 Monitor.CheckPlayer() → check whitelist → grace period → requirements vs Config
     ↓
-(if fails) → Desktop: Webhook.SendBanNotification() + Chat.SendBanCommand() with retry verification
-             Mobile:  Webhook.SendMobileBanNotification() with @mention ping + tap-to-copy /ban command
+(if fails) → ExecuteBanWithVerification():
+    1. Try VirtualInputManager /kick or /ban (both platforms)
+    2. Wait for player to leave (3s mobile / 10s desktop)
+    3. Desktop: retry up to 3x if still in server
+    4. Mobile: fall back to Webhook.SendMobileBanNotification() with @mention + tap-to-copy
+    5. On success: Webhook.SendBanNotification() (standard notification)
     ↓
 GUI.UpdateDisplay() → player list + banned list with status indicators
 ```
 
 ## Platform Detection & Chat
 
-### Mobile Limitation (IMPORTANT)
-Roblox's TextChatService has **server-side validation** that detects and blocks programmatically-sent messages on mobile with "Your message could not be sent". This is a Roblox security feature that cannot be bypassed from client-side.
+### VirtualInputManager (Both Platforms)
+VirtualInputManager now works on both desktop and mobile for sending chat commands. The chat module always attempts VIM first. If the ban doesn't take effect on mobile (player still in server after 3s), the monitor falls back to sending a Discord webhook notification.
 
-**Tested and confirmed non-working on mobile:**
-- VirtualInputManager
-- TextChannel:SendAsync()
-- firesignal on FocusLost
-- ReleaseFocus(true)
-- keypress simulation
-- All 12+ bypass methods tested
-
-### Chat Module (Platform-Aware)
-Platform detection: `UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled`
+### Chat Module
+Platform detection uses 6 signals: TouchEnabled/KeyboardEnabled, IsTenFootInterface, viewport size, MouseEnabled, GyroscopeEnabled, GamepadEnabled. Re-checks 1s after load.
 
 Chat input found via: `CoreGui.ExperienceChat` → descendant TextBox named "TextBox"
 
 ```lua
--- Desktop: VirtualInputManager (auto-sends)
--- Mobile: not used for sending (webhook handles notification)
-
+-- Always uses VirtualInputManager (both platforms)
 Chat.IsMobile()                -- Returns true/false
 Chat.GetPlatform()             -- Returns "Mobile" or "Desktop"
 Chat.IsAvailable()             -- Check if chat input exists
-Chat.SendMessage(msg)          -- Platform-aware send (desktop only effective)
+Chat.SendMessage(msg)          -- Send via VirtualInputManager
 Chat.SendKickCommand(name)     -- Send "/kick name"
 Chat.SendBanCommand(name)      -- Send "/ban name"
 Chat.SendTestMessage()         -- Send test message
 ```
 
-### Mobile Workflow (Webhook Notification)
-On mobile, the script cannot auto-send chat commands. Instead it sends a Discord webhook notification:
+### Mobile Fallback Workflow
+When VIM ban doesn't remove the player on mobile (checked after 3s):
 
-1. Script detects player failing requirements
-2. 📱 `Webhook.SendMobileBanNotification()` sends Discord embed with:
+1. `Webhook.SendMobileBanNotification()` sends Discord embed with:
    - `<@DISCORD_USER_ID>` content field → triggers mobile push notification
    - Title: "🚫 Player Needs Ban"
    - Code block with `/ban PlayerName` → tap to copy on Discord mobile
    - Full hive stats (total bees, avg level, % at required level, gifted count)
-3. User receives Discord ping, taps code block to copy, pastes in Roblox chat
+2. Re-sends every `MOBILE_RENOTIFY_INTERVAL` seconds (default 300 = 5 min) while player is still in server
+3. When player eventually leaves, marks as verified + sends confirmation webhook
 
 ### Webhook Notification Types
 ```lua
@@ -160,14 +154,15 @@ Monitor.ActionLog = {}             -- Recent log entries (max 50, LIFO)
 Monitor.LastScanResults = {}       -- Last ScanAllHives() results
 ```
 
-### Ban Verification (Desktop)
+### Ban Verification (Unified)
 ```lua
--- Retries up to 3 times, waits 10s per attempt for player to leave
+-- Both platforms try VirtualInputManager first
+-- Mobile: 3s quick check, then webhook fallback. Desktop: 10s, retries up to 3x
 Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
 -- BannedPlayers states:
 --   verified=true                   → player confirmed left
---   verified=false, failed          → all retries exhausted, player still in server
---   mobileMode=true, webhookNotified → mobile webhook notification sent
+--   verified=false, failed          → desktop: all retries exhausted, player still in server
+--   mobileMode=true, webhookNotified → mobile: VIM failed, webhook fallback sent
 --   dryRun=true                     → DRY_RUN was active
 ```
 
@@ -252,7 +247,7 @@ Config.RemoveFromWhitelist(username)  -- Returns true if removed
 ### Module Initialization
 Modules export tables with functions. Init with dependencies:
 ```lua
-GUI.Init(Config, Monitor)
+GUI.Init(Config, Monitor, Chat)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 ```
 
@@ -294,7 +289,7 @@ Log entries stored in `Monitor.ActionLog` (max 50, newest first) with `{time, ty
 
 ## Executor Compatibility
 Tested on:
-- **Delta** (mobile) - webhook notification mode
+- **Delta** (mobile) - VIM auto-ban + webhook fallback
 - **Seliware** (desktop) - VirtualInputManager works
 - Should work on Synapse, Fluxus, etc.
 

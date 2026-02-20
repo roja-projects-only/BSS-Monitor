@@ -6,9 +6,9 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 
 - 🔍 **Hive Scanning** - Scans all player hives in the server
 - 📊 **Level Verification** - Checks if players meet the 80%+ Lv17 requirement
-- 🚫 **Auto-Kick/Ban** - Desktop: auto-sends `/kick` or `/ban` via VirtualInputManager
-- 📱 **Mobile Support** - Sends Discord webhook with @mention ping and tap-to-copy `/ban` command
-- ✅ **Ban Verification** - Confirms player actually leaves server, retries up to 3 times (desktop)
+- 🚫 **Auto-Kick/Ban** - Auto-sends `/kick` or `/ban` via VirtualInputManager (both desktop and mobile)
+- 📱 **Mobile Fallback** - If VIM ban fails on mobile, sends Discord webhook with @mention ping and tap-to-copy `/ban` command
+- ✅ **Ban Verification** - Confirms player actually leaves server; mobile gets 3s quick check then webhook fallback
 - 🔔 **Discord Webhooks** - Get notifications when players are kicked/banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
 - 🖥️ **Optional GUI** - Player list with status indicators
@@ -102,18 +102,18 @@ Simply run the loadstring again to reload with updated settings.
 
 ## Ban Verification
 
-### Desktop
-When a player is kicked/banned, the monitor:
+### How It Works (Both Platforms)
 1. Sends the `/kick` or `/ban` command via VirtualInputManager
-2. Waits up to 10 seconds to confirm player left
-3. If still in server, retries up to 3 times
-4. Sends Discord notification on success or failure
+2. Waits to confirm player left (3s on mobile, 10s on desktop)
+3. **Desktop**: If still in server, retries up to 3 times with 10s timeout each
+4. **Mobile**: If player didn't leave after 3s, falls back to Discord webhook
+5. Sends Discord notification on success or failure
 
-### Mobile
-Roblox blocks programmatically-sent chat messages on mobile (server-side validation). The monitor uses Discord webhooks instead:
-1. Detects player failing requirements
-2. Sends Discord webhook with `<@YOUR_USER_ID>` to trigger a push notification
-3. Embed includes a `/ban PlayerName` code block — tap to copy on Discord mobile
+### Mobile Fallback
+If VirtualInputManager doesn't successfully remove the player on mobile:
+1. Sends Discord webhook with `<@YOUR_USER_ID>` to trigger a push notification
+2. Embed includes a `/ban PlayerName` code block — tap to copy on Discord mobile
+3. Re-sends the notification every 5 minutes while the player is still in server
 4. You paste the command into Roblox chat manually
 
 Set `DISCORD_USER_ID` in your config for @mention pings to work.
@@ -206,8 +206,8 @@ BSS-Monitor/
 ## Requirements
 
 - Roblox script executor (Seliware, Delta, etc.)
-- **Desktop**: VirtualInputManager support for auto-sending chat commands
-- **Mobile**: Discord webhook with `DISCORD_USER_ID` for ban notifications
+- VirtualInputManager support for auto-sending chat commands (works on both desktop and mobile)
+- **Mobile fallback**: Discord webhook with `DISCORD_USER_ID` for ban notifications if VIM fails
 - Private server in Bee Swarm Simulator (with kick/ban permissions)
 - HTTP requests enabled in executor (for webhooks)
 

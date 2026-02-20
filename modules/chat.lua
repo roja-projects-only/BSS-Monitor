@@ -3,8 +3,8 @@
     Handles sending chat messages/commands
     https://github.com/roja-projects-only/BSS-Monitor
     
-    NOTE: Mobile cannot auto-send chat due to Roblox server-side validation.
-    On mobile, use clipboard mode (auto-copies command for manual paste).
+    VirtualInputManager now works on both desktop and mobile.
+    On mobile, if VIM fails the monitor falls back to webhook notification.
 ]]
 
 local Chat = {}
@@ -105,12 +105,8 @@ local function getChatInputBox()
     return chatInput
 end
 
--- Desktop method: VirtualInputManager (confirmed working on PC)
+-- VirtualInputManager method (works on both desktop and mobile)
 local function sendViaVirtualInput(message)
-    if isMobile then
-        return false, "VirtualInputManager doesn't work on mobile"
-    end
-    
     local chatInput = getChatInputBox()
     if not chatInput then
         return false, "Chat input not found"
@@ -161,25 +157,13 @@ local function prefillChatInput(message)
     return success, err
 end
 
--- Send a chat message (platform-aware)
+-- Send a chat message (always tries VirtualInputManager first)
 function Chat.SendMessage(message)
-    if isMobile then
-        -- Mobile: Copy to clipboard + prefill
-        local clipSuccess = copyToClipboard(message)
-        local prefillSuccess = prefillChatInput(message)
-        
-        if clipSuccess or prefillSuccess then
-            return true, "Mobile (clipboard + prefill)"
-        end
-        return false, "Mobile send failed"
-    else
-        -- Desktop: Use VirtualInputManager
-        local success, err = sendViaVirtualInput(message)
-        if success then
-            return true, "VirtualInputManager"
-        end
-        return false, "Desktop send failed: " .. tostring(err)
+    local success, err = sendViaVirtualInput(message)
+    if success then
+        return true, "VirtualInputManager"
     end
+    return false, "Send failed: " .. tostring(err)
 end
 
 -- Send kick command
