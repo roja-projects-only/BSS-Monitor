@@ -17,6 +17,12 @@ local GuiService = game:GetService("GuiService")
 -- Dependencies (set by Init)
 local Config = nil
 
+-- Command queue: prevents overlapping chat commands when multiple bans trigger at once
+local commandQueue = {}
+local isProcessingQueue = false
+local QUEUE_DELAY = 1 -- seconds between commands
+local processQueue -- forward-declared; defined after sendViaVirtualInput
+
 -- Detect platform with multiple signals for reliability
 local isMobile = nil
 
@@ -130,6 +136,25 @@ local function sendViaVirtualInput(message)
     return success, err
 end
 
+-- Queue processor: sends one command at a time with a delay between each
+processQueue = function()
+    if isProcessingQueue then return end
+    isProcessingQueue = true
+
+    while #commandQueue > 0 do
+        local item = table.remove(commandQueue, 1)
+        local success, err = sendViaVirtualInput(item.message)
+        item.callback(success, err)
+
+        -- Wait between commands so the chat box is ready for the next one
+        if #commandQueue > 0 then
+            task.wait(QUEUE_DELAY)
+        end
+    end
+
+    isProcessingQueue = false
+end
+
 -- Mobile method: Copy to clipboard (user must paste manually)
 local function copyToClipboard(message)
     if not setclipboard then
@@ -160,13 +185,33 @@ local function prefillChatInput(message)
     return success, err
 end
 
--- Send a chat message (always tries VirtualInputManager first)
+-- Send a chat message (queued – only one command runs at a time)
 function Chat.SendMessage(message)
-    local success, err = sendViaVirtualInput(message)
-    if success then
+    local result = { done = false, success = false, err = nil }
+
+    table.insert(commandQueue, {
+        message = message,
+        callback = function(success, err)
+            result.success = success
+            result.err = err
+            result.done = true
+        end
+    })
+
+    -- Kick off the processor if it isn't already running
+    if not isProcessingQueue then
+        coroutine.wrap(processQueue)()
+    end
+
+    -- Yield until this message has been sent
+    while not result.done do
+        task.wait(0.1)
+    end
+
+    if result.success then
         return true, "VirtualInputManager"
     end
-    return false, "Send failed: " .. tostring(err)
+    return false, "Send failed: " .. tostring(result.err)
 end
 
 -- Send kick command
