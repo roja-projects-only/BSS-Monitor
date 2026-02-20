@@ -104,7 +104,7 @@ function Webhook.SendBanNotification(config, playerName, hiveData, checkResult)
             {
                 name = "❌ Requirement",
                 value = string.format(
-                    "`%.0f%%` at Lv%d+ — needed `%.0f%%`",
+                    "`%.0f%%` at LVL %d+ — needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
                 ),
                 inline = false
@@ -151,7 +151,7 @@ function Webhook.SendMobileBanNotification(config, playerName, hiveData, checkRe
             {
                 name = "📊 Hive Stats",
                 value = string.format(
-                    "`🐝 %d bees` · `⭐ %d gifted` · `📈 Avg Lv%.1f`",
+                    "`🐝 %d bees` · `⭐ %d gifted` · `📈 Avg LVL %.1f`",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
@@ -159,7 +159,7 @@ function Webhook.SendMobileBanNotification(config, playerName, hiveData, checkRe
             {
                 name = "❌ Requirement",
                 value = string.format(
-                    "`%.0f%%` at Lv%d+ — needed `%.0f%%`",
+                    "`%.0f%%` at LVL %d+ — needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
                 ),
                 inline = false
@@ -193,7 +193,7 @@ function Webhook.SendStartNotification(config)
             {
                 name = "⚙️ Settings",
                 value = string.format(
-                    "```\nMin Level    : Lv%d\nRequired     : %.0f%%\nInterval     : %ds\nGrace Period : %ds\nDry Run      : %s\nWhitelisted  : %d players\n```",
+                    "```\nMin Level    : LVL %d\nRequired     : %.0f%%\nInterval     : %ds\nGrace Period : %ds\nDry Run      : %s\nWhitelisted  : %d players\n```",
                     config.MINIMUM_LEVEL,
                     config.REQUIRED_PERCENT * 100,
                     config.CHECK_INTERVAL,
@@ -230,7 +230,7 @@ function Webhook.SendPlayerPassedNotification(config, playerName, hiveData, chec
         title = "✅  Player OK",
         color = COLORS.GREEN,
         description = string.format(
-            "**%s** meets hive requirements.\n`%.0f%%` at Lv%d+ · `Avg Lv%.1f`",
+            "**%s** meets hive requirements.\n`%.0f%%` at LVL %d+ · `Avg LVL %.1f`",
             playerName,
             checkResult.percentAtLevel * 100,
             config.MINIMUM_LEVEL,
