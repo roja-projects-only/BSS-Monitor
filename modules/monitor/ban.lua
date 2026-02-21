@@ -167,12 +167,15 @@ function Ban.CheckPlayer(playerName, hiveData)
         return true, "Whitelisted"
     end
 
-    -- Skip if already banned or kicked (scan timeout)
+    -- Skip if already banned, kicked, or ban currently in progress
     if State.BannedPlayers[playerName] then
         return false, "Already banned"
     end
     if State.KickedTimeouts and State.KickedTimeouts[playerName] then
         return false, "Already kicked (scan timeout)"
+    end
+    if State.PendingBans[playerName] then
+        return false, "Ban already in progress"
     end
 
     -- Skip if in grace period
@@ -210,6 +213,16 @@ function Ban.CheckPlayer(playerName, hiveData)
 
         -- Execute ban with verification (unless dry run)
         if not Config.DRY_RUN then
+            -- Mark as banned immediately so:
+            -- 1) PlayerRemoving suppresses the leave webhook
+            -- 2) the next scan cycle skips this player (BannedPlayers guard above)
+            State.BannedPlayers[playerName] = {
+                time = tick(),
+                reason = checkResult.reason,
+                pending = true,
+                verified = false,
+            }
+
             local hiveDataRef = hiveData
             local checkResultRef = checkResult
 
@@ -224,6 +237,12 @@ function Ban.CheckPlayer(playerName, hiveData)
 
                 if success then
                     State.Log("BanVerified", playerName .. ": " .. verifyResult)
+                    -- ExecuteWithVerification overwrites BannedPlayers in most paths;
+                    -- clear pending flag in case it returned early (e.g. "Not in server")
+                    if State.BannedPlayers[playerName] and State.BannedPlayers[playerName].pending then
+                        State.BannedPlayers[playerName].pending = nil
+                        State.BannedPlayers[playerName].verified = true
+                    end
                     if Webhook then
                         Webhook.SendBanNotification(Config, playerName, hiveDataRef, checkResultRef)
                     end

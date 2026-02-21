@@ -52,7 +52,7 @@ function Embeds.SendPlayerJoinNotification(config, playerName, playerCount, maxP
         description = string.format("**%s** joined the server.", playerName),
         fields = {
             {
-                name = E.players .. " Players",
+                name = "Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
@@ -85,12 +85,12 @@ function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, max
         description = string.format("**%s** left the server.", playerName),
         fields = {
             {
-                name = E.players .. " Players",
+                name = "Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
             {
-                name = "⏱️ Playtime",
+                name = "Playtime",
                 value = "`" .. formatPlaytime(playtimeSeconds) .. "`",
                 inline = true
             },
@@ -115,15 +115,15 @@ function Embeds.SendBanNotification(config, playerName, hiveData, checkResult)
         ),
         fields = {
             {
-                name = E.hive .. " Hive Stats",
+                name = "Hive Stats",
                 value = string.format(
-                    "```\n" .. E.bee .. " Bees: %d   " .. E.gifted .. " Gifted: %d\n" .. E.level .. " Avg Level: %.1f\n```",
+                    "```\nBees: %d   Gifted: %d\nAvg Level: %.1f\n```",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = E.fail .. " Requirement",
+                name = "Requirement",
                 value = string.format(
                     "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
@@ -160,25 +160,25 @@ function Embeds.SendMobileBanNotification(config, playerName, hiveData, checkRes
         ),
         fields = {
             {
-                name = E.mobile .. " Mobile — Tap to Copy",
+                name = "Mobile \u2014 Tap to Copy",
                 value = "`" .. command .. "`",
                 inline = false
             },
             {
-                name = E.desktop .. " Desktop",
+                name = "Desktop",
                 value = "```\n" .. command .. "\n```",
                 inline = false
             },
             {
-                name = E.hive .. " Hive Stats",
+                name = "Hive Stats",
                 value = string.format(
-                    "`" .. E.bee .. " %d bees` · `" .. E.gifted .. " %d gifted` · `" .. E.level .. " Avg LVL %.1f`",
+                    "`%d bees` \u00b7 `%d gifted` \u00b7 `Avg LVL %.1f`",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = E.fail .. " Requirement",
+                name = "Requirement",
                 value = string.format(
                     "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
@@ -212,7 +212,7 @@ function Embeds.SendStartNotification(config)
         description = "BSS Monitor is now watching this server.",
         fields = {
             {
-                name = E.config .. " Settings",
+                name = "Settings",
                 value = string.format(
                     "```\nMin Level    : LVL %d\nRequired     : %.0f%%\nInterval     : %ds\nGrace Period : %ds\nDry Run      : %s\nWhitelisted  : %d players\n```",
                     config.MINIMUM_LEVEL,

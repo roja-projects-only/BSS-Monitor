@@ -69,7 +69,12 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         end
 
         -- Check if this was a banned player (mobile or failed desktop) - mark as verified
-        if State.BannedPlayers[player.Name] and not State.BannedPlayers[player.Name].verified then
+        -- Skip if a PendingBan is active (ban coroutine handles verification)
+        -- Skip if entry is still pending (set early by CheckPlayer, coroutine not done yet)
+        if State.BannedPlayers[player.Name]
+            and not State.BannedPlayers[player.Name].verified
+            and not State.BannedPlayers[player.Name].pending
+            and not State.PendingBans[player.Name] then
             State.BannedPlayers[player.Name].verified = true
             State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
             if Webhook then
