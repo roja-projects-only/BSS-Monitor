@@ -7,7 +7,13 @@
         loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/loader.lua"))()
 ]]
 
-local REPO_BASE = "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
+-- DEV_MODE is a pure local — defined before any module load or global access,
+-- so it cannot be overridden via _G.BSSMonitorConfig or any external injection.
+-- When obfuscated, this value is baked in and not visible or configurable.
+local DEV_MODE = false  -- set true for localhost testing only
+local REPO_BASE = DEV_MODE
+    and "http://localhost:8080/"
+    or  "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
 
 -- ============================================
 -- CLEANUP PREVIOUS SESSION (if re-executed)
