@@ -37,7 +37,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
 
     -- Initialize sub-modules with their dependencies
     Ban.Init(State, config, scanner, webhook, chat, gui)
-    Cycle.Init(State, Ban, config, scanner, webhook, gui)
+    Cycle.Init(State, Ban, config, scanner, webhook, gui, chat)
 
     -- Track existing players
     for _, player in ipairs(Players:GetPlayers()) do

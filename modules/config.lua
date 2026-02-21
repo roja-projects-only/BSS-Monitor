@@ -22,6 +22,7 @@ Config.MIN_BEES_REQUIRED = 45       -- Minimum bees to have (ignore if less, mig
 -- =============================================
 Config.CHECK_INTERVAL = 30          -- Seconds between scans
 Config.GRACE_PERIOD = 20            -- Seconds after join before checking (let hive load)
+Config.SCAN_TIMEOUT = 90            -- Seconds after grace period before kicking (no hive data found)
 Config.BAN_COOLDOWN = 5             -- Seconds between ban commands (avoid spam)
 
 -- =============================================

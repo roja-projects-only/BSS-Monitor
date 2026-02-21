@@ -16,14 +16,16 @@ local Config = nil
 local Scanner = nil
 local Webhook = nil
 local GUI = nil
+local Chat = nil
 
-function Cycle.Init(state, ban, config, scanner, webhook, gui)
+function Cycle.Init(state, ban, config, scanner, webhook, gui, chat)
     State = state
     Ban = ban
     Config = config
     Scanner = scanner
     Webhook = webhook
     GUI = gui
+    Chat = chat
 end
 
 -- Run a single scan cycle
@@ -67,6 +69,53 @@ function Cycle.RunCycle()
                         Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
                         banData.lastNotifyTime = tick()
                         State.Log("Mobile", "📱 Re-sent webhook notification for: " .. playerName .. " (still in server)")
+                    end
+                end
+            end
+        end
+    end
+
+    -- Scan timeout: kick players with no hive data after SCAN_TIMEOUT past grace period
+    local scanTimeout = Config.SCAN_TIMEOUT or 90
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local playerName = player.Name
+            if not Config.IsWhitelisted(playerName) and not State.BannedPlayers[playerName] then
+                local joinTime = State.PlayerJoinTimes[playerName]
+                if joinTime then
+                    local elapsed = tick() - joinTime
+                    if elapsed > Config.GRACE_PERIOD + scanTimeout then
+                        if not State.LastScanResults[playerName] then
+                            State.Log("Ban", string.format("⏰ %s: no hive data after %ds - kicking (scan timeout)", playerName, math.floor(elapsed)))
+                            if not Config.DRY_RUN then
+                                coroutine.wrap(function()
+                                    local success, err = Chat.SendKickCommand(playerName)
+                                    if success then
+                                        State.Log("BanVerified", "Kick command sent for " .. playerName .. " (scan timeout)")
+                                    else
+                                        State.Log("BanFailed", "Failed to kick " .. playerName .. ": " .. tostring(err))
+                                    end
+                                    if GUI then
+                                        GUI.UpdateDisplay(State.LastScanResults, State.CheckedPlayers, State.BannedPlayers)
+                                    end
+                                end)()
+                            else
+                                State.Log("Ban", "[DRY RUN] Would kick " .. playerName .. " for scan timeout")
+                            end
+                            State.BannedPlayers[playerName] = {
+                                time = tick(),
+                                reason = "No hive data (scan timeout)",
+                                scanTimeout = true,
+                                dryRun = Config.DRY_RUN
+                            }
+                            if Webhook then
+                                Webhook.Send(Config, {
+                                    title = "\xE2\x8F\xB0  Scan Timeout \xE2\x80\x94 Player Kicked",
+                                    color = 0xE67E22,
+                                    description = string.format("**%s** was kicked for having no hive data after %d seconds.", playerName, math.floor(elapsed)),
+                                })
+                            end
+                        end
                     end
                 end
             end

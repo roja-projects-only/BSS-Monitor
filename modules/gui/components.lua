@@ -508,7 +508,7 @@ function Components.CreatePlayerEntry(playerName, hiveData, checkedData)
             entry.BackgroundColor3 = C.redBg
         end
     else
-        statsLabel.Text = "SCANNING..."
+        statsLabel.Text = "SCANNING"
         statsLabel.TextColor3 = C.blue
         indicator.BackgroundColor3 = C.blue
     end

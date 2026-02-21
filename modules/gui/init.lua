@@ -173,7 +173,7 @@ function GUI.Create()
         if Monitor and Monitor.PlayerJoinTimes then
             local gracePeriod = Config and Config.GRACE_PERIOD or 20
             for name, joinTime in pairs(Monitor.PlayerJoinTimes) do
-                if tick() - joinTime < gracePeriod then
+                if tick() - joinTime < gracePeriod + 2 then
                     GUI.UpdatePlayerList()
                     break
                 end
