@@ -64,7 +64,21 @@ end
 -- ═══════════════════════════════════════
 -- PLAYER LEAVE (natural leave only, not bans)
 -- ═══════════════════════════════════════
-function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers)
+local function formatPlaytime(seconds)
+    if not seconds then return "\u2014" end
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    local s = seconds % 60
+    if h > 0 then
+        return string.format("%dh %dm %ds", h, m, s)
+    elseif m > 0 then
+        return string.format("%dm %ds", m, s)
+    else
+        return string.format("%ds", s)
+    end
+end
+
+function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers, playtimeSeconds)
     local embed = {
         title = E.leave .. "  Player Left",
         color = C().DARK,
@@ -73,6 +87,11 @@ function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, max
             {
                 name = E.players .. " Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
+                inline = true
+            },
+            {
+                name = "⏱️ Playtime",
+                value = "`" .. formatPlaytime(playtimeSeconds) .. "`",
                 inline = true
             },
         },

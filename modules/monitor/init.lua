@@ -88,6 +88,9 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         -- Send leave webhook only if player was NOT banned/pending ban
         local wasBanned = State.BannedPlayers[player.Name] or State.PendingBans[player.Name] or State.KickedTimeouts[player.Name]
 
+        local joinTime = State.PlayerJoinTimes[player.Name]
+        local playtimeSeconds = joinTime and math.floor(tick() - joinTime) or nil
+
         State.PlayerJoinTimes[player.Name] = nil
         State.CheckedPlayers[player.Name] = nil
         State.KickedTimeouts[player.Name] = nil
@@ -96,7 +99,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         if not wasBanned and Webhook then
             task.wait(0.1)
             local playerCount = #Players:GetPlayers()
-            Webhook.SendPlayerLeaveNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
+            Webhook.SendPlayerLeaveNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS, playtimeSeconds)
         end
 
         if GUI then
