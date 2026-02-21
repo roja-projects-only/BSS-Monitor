@@ -80,7 +80,7 @@ function Cycle.RunCycle()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local playerName = player.Name
-            if not Config.IsWhitelisted(playerName) and not State.BannedPlayers[playerName] then
+            if not Config.IsWhitelisted(playerName) and not State.BannedPlayers[playerName] and not State.KickedTimeouts[playerName] then
                 local joinTime = State.PlayerJoinTimes[playerName]
                 if joinTime then
                     local elapsed = tick() - joinTime
@@ -102,10 +102,9 @@ function Cycle.RunCycle()
                             else
                                 State.Log("Ban", "[DRY RUN] Would kick " .. playerName .. " for scan timeout")
                             end
-                            State.BannedPlayers[playerName] = {
+                            State.KickedTimeouts[playerName] = {
                                 time = tick(),
                                 reason = "No hive data (scan timeout)",
-                                scanTimeout = true,
                                 dryRun = Config.DRY_RUN
                             }
                             if Webhook then

@@ -167,9 +167,12 @@ function Ban.CheckPlayer(playerName, hiveData)
         return true, "Whitelisted"
     end
 
-    -- Skip if already banned
+    -- Skip if already banned or kicked (scan timeout)
     if State.BannedPlayers[playerName] then
         return false, "Already banned"
+    end
+    if State.KickedTimeouts and State.KickedTimeouts[playerName] then
+        return false, "Already kicked (scan timeout)"
     end
 
     -- Skip if in grace period

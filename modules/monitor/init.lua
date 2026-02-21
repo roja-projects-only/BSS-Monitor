@@ -73,29 +73,30 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         -- Check if this was a banned player (mobile or failed desktop) - mark as verified
         if State.BannedPlayers[player.Name] and not State.BannedPlayers[player.Name].verified then
             State.BannedPlayers[player.Name].verified = true
-            local isScanTimeout = State.BannedPlayers[player.Name].scanTimeout
-            if isScanTimeout then
-                State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
-                if Webhook then
-                    Webhook.Send(Config, {
-                        title = "\xE2\x9C\x85  Kick Confirmed",
-                        color = 0x57F287,
-                        description = string.format("**%s** has left the server (scan timeout).", player.Name),
-                    })
-                end
-            else
-                State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
-                if Webhook then
-                    Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", State.BannedPlayers[player.Name].attempts or 0)
-                end
+            State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
+            if Webhook then
+                Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", State.BannedPlayers[player.Name].attempts or 0)
+            end
+        end
+
+        -- Check if this was a scan-timeout kick
+        if State.KickedTimeouts[player.Name] then
+            State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
+            if Webhook then
+                Webhook.Send(Config, {
+                    title = "\xE2\x9C\x85  Kick Confirmed",
+                    color = 0x57F287,
+                    description = string.format("**%s** has left the server (scan timeout).", player.Name),
+                })
             end
         end
 
         -- Send leave webhook only if player was NOT banned/pending ban
-        local wasBanned = State.BannedPlayers[player.Name] or State.PendingBans[player.Name]
+        local wasBanned = State.BannedPlayers[player.Name] or State.PendingBans[player.Name] or State.KickedTimeouts[player.Name]
 
         State.PlayerJoinTimes[player.Name] = nil
         State.CheckedPlayers[player.Name] = nil
+        State.KickedTimeouts[player.Name] = nil
         State.Log("PlayerLeave", player.Name .. " left the server")
 
         if not wasBanned and Webhook then

@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 State.IsRunning = false
 State.PlayerJoinTimes = {}    -- Track when players joined
 State.BannedPlayers = {}      -- Track who we've already banned
+State.KickedTimeouts = {}     -- Track scan-timeout kicks (not shown in GUI banned list)
 State.CheckedPlayers = {}     -- Track who passed checks
 State.LastScanResults = {}    -- Last scan results
 State.PendingBans = {}        -- Players waiting for ban verification
