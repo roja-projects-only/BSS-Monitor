@@ -52,8 +52,12 @@ if _G.BSSMonitor then
     end)
     
     pcall(function()
-        -- Disconnect all stored connections (Monitor + _G level)
-        if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.Connections then
+        -- Disconnect all stored connections (Monitor state + _G level)
+        if _G.BSSMonitor.MonitorState and _G.BSSMonitor.MonitorState.Connections then
+            for _, conn in ipairs(_G.BSSMonitor.MonitorState.Connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+        elseif _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.Connections then
             for _, conn in ipairs(_G.BSSMonitor.Monitor.Connections) do
                 pcall(function() conn:Disconnect() end)
             end
@@ -122,7 +126,12 @@ print("Loading modules...")
 local Config = loadModule("config")
 local Scanner = loadModule("scanner")
 local Chat = loadModule("chat")
-local Monitor = loadModule("monitor")
+
+-- Load Monitor sub-modules (modular monitor/ folder)
+local MonitorState = loadModule("monitor/state")
+local MonitorBan = loadModule("monitor/ban")
+local MonitorCycle = loadModule("monitor/cycle")
+local Monitor = loadModule("monitor/init")
 
 -- Load Webhook sub-modules (modular webhook/ folder)
 local WebhookHttp = loadModule("webhook/http")
@@ -136,7 +145,7 @@ local GUIComponents = loadModule("gui/components")
 local GUI = loadModule("gui/init")
 
 -- Validate critical modules (GUI is optional)
-if not Config or not Scanner or not Monitor then
+if not Config or not Scanner or not Monitor or not MonitorState then
     error("❌ BSS Monitor: Critical module load failed!")
     return
 end
@@ -170,7 +179,7 @@ if Webhook then Webhook.Init(WebhookHttp, WebhookEmbeds) end
 if GUIHelpers then GUIHelpers.Init(GUITheme) end
 if GUIComponents then GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat) end
 if GUI then GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents) end
-Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
+Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, MonitorCycle)
 
 -- Create GUI if enabled
 if Config.SHOW_GUI and GUI then
@@ -194,6 +203,7 @@ _G.BSSMonitor = {
     Chat = Chat,
     GUI = GUI,
     Monitor = Monitor,
+    MonitorState = MonitorState,
     _connections = {},  -- Store connections for cleanup on re-execution
     
     -- Convenience functions

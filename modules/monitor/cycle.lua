@@ -1,0 +1,181 @@
+--[[
+    BSS Monitor - Cycle & Control
+    Scan cycle, start/stop/toggle, status reporting
+    https://github.com/roja-projects-only/BSS-Monitor
+]]
+
+local Cycle = {}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Dependencies (set by Init)
+local State = nil
+local Ban = nil
+local Config = nil
+local Scanner = nil
+local Webhook = nil
+local GUI = nil
+
+function Cycle.Init(state, ban, config, scanner, webhook, gui)
+    State = state
+    Ban = ban
+    Config = config
+    Scanner = scanner
+    Webhook = webhook
+    GUI = gui
+end
+
+-- Run a single scan cycle
+function Cycle.RunCycle()
+    State.LastScanResults = Scanner.ScanAllHives(Config)
+
+    local checkedCount = 0
+    local passedCount = 0
+    local failedCount = 0
+
+    for playerName, hiveData in pairs(State.LastScanResults) do
+        if playerName ~= LocalPlayer.Name then
+            checkedCount = checkedCount + 1
+            local passed, reason = Ban.CheckPlayer(playerName, hiveData)
+            if passed then
+                passedCount = passedCount + 1
+            else
+                failedCount = failedCount + 1
+            end
+        end
+    end
+
+    -- Mobile ban verification: re-check if mobile-banned players have left or need re-notification
+    for playerName, banData in pairs(State.BannedPlayers) do
+        if banData.mobileMode and not banData.verified then
+            if not State.IsPlayerInServer(playerName) then
+                -- Player left on their own
+                banData.verified = true
+                State.Log("BanVerified", "✅ " .. playerName .. " has left the server")
+                if Webhook then
+                    Webhook.SendBanVerifiedNotification(Config, playerName, "Player left server", 0)
+                end
+            elseif banData.webhookNotified then
+                -- Player still in server, re-send webhook if enough time has passed
+                local timeSinceNotify = tick() - (banData.lastNotifyTime or banData.time)
+                local renotifyInterval = Config.MOBILE_RENOTIFY_INTERVAL or 300
+                if timeSinceNotify >= renotifyInterval then
+                    local hiveData = State.LastScanResults[playerName]
+                    if hiveData then
+                        local checkResult = Scanner.CheckRequirements(hiveData, Config)
+                        Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+                        banData.lastNotifyTime = tick()
+                        State.Log("Mobile", "📱 Re-sent webhook notification for: " .. playerName .. " (still in server)")
+                    end
+                end
+            end
+        end
+    end
+
+    return {
+        checked = checkedCount,
+        passed = passedCount,
+        failed = failedCount
+    }
+end
+
+-- Start monitoring loop
+function Cycle.Start()
+    if State.IsRunning then
+        State.Log("Info", "Monitor already running")
+        return false
+    end
+
+    State.IsRunning = true
+    State.Log("Start", "Monitoring started")
+
+    -- Send webhook
+    Webhook.SendStartNotification(Config)
+
+    -- Update GUI
+    if GUI then
+        GUI.UpdateStatus(true)
+    end
+
+    -- Start loop in coroutine
+    coroutine.wrap(function()
+        while State.IsRunning do
+            local results = Cycle.RunCycle()
+            State.Log("Scan", string.format("Scanned %d players: %d passed, %d failed",
+                results.checked, results.passed, results.failed))
+
+            if GUI then
+                GUI.UpdateDisplay(State.LastScanResults, State.CheckedPlayers, State.BannedPlayers)
+                GUI.UpdateLog()
+            end
+
+            -- Wait for next cycle
+            for i = 1, Config.CHECK_INTERVAL do
+                if not State.IsRunning then break end
+                wait(1)
+            end
+        end
+    end)()
+
+    return true
+end
+
+-- Stop monitoring
+function Cycle.Stop()
+    if not State.IsRunning then
+        State.Log("Info", "Monitor not running")
+        return false
+    end
+
+    State.IsRunning = false
+    State.Log("Stop", "Monitoring stopped")
+
+    -- Send webhook
+    Webhook.SendStopNotification(Config)
+
+    -- Update GUI
+    if GUI then
+        GUI.UpdateStatus(false)
+    end
+
+    return true
+end
+
+-- Toggle monitoring
+function Cycle.Toggle()
+    if State.IsRunning then
+        return Cycle.Stop()
+    else
+        return Cycle.Start()
+    end
+end
+
+-- Get status
+function Cycle.GetStatus()
+    return {
+        running = State.IsRunning,
+        playersInGrace = (function()
+            local count = 0
+            for name, joinTime in pairs(State.PlayerJoinTimes) do
+                if tick() - joinTime < Config.GRACE_PERIOD then
+                    count = count + 1
+                end
+            end
+            return count
+        end)(),
+        playersBanned = (function()
+            local count = 0
+            for _ in pairs(State.BannedPlayers) do count = count + 1 end
+            return count
+        end)(),
+        playersPassed = (function()
+            local count = 0
+            for _ in pairs(State.CheckedPlayers) do count = count + 1 end
+            return count
+        end)(),
+        lastScan = State.LastScanResults
+    }
+end
+
+return Cycle
