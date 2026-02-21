@@ -73,9 +73,21 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         -- Check if this was a banned player (mobile or failed desktop) - mark as verified
         if State.BannedPlayers[player.Name] and not State.BannedPlayers[player.Name].verified then
             State.BannedPlayers[player.Name].verified = true
-            State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
-            if Webhook then
-                Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", State.BannedPlayers[player.Name].attempts or 0)
+            local isScanTimeout = State.BannedPlayers[player.Name].scanTimeout
+            if isScanTimeout then
+                State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
+                if Webhook then
+                    Webhook.Send(Config, {
+                        title = "\xE2\x9C\x85  Kick Confirmed",
+                        color = 0x57F287,
+                        description = string.format("**%s** has left the server (scan timeout).", player.Name),
+                    })
+                end
+            else
+                State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
+                if Webhook then
+                    Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", State.BannedPlayers[player.Name].attempts or 0)
+                end
             end
         end
 
@@ -87,7 +99,8 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         State.Log("PlayerLeave", player.Name .. " left the server")
 
         if not wasBanned and Webhook then
-            local playerCount = #Players:GetPlayers() - 1
+            task.wait(0.1)
+            local playerCount = #Players:GetPlayers()
             Webhook.SendPlayerLeaveNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
         end
 
