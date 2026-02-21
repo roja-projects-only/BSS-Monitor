@@ -255,11 +255,18 @@ function Scanner.CheckRequirements(hiveData, config)
         details = {}
     }
     
-    -- Check minimum bees
+    -- Check minimum bees (too few = doesn't meet requirements)
     if hiveData.totalBees < config.MIN_BEES_REQUIRED then
         result.reason = string.format("Not enough bees (%d/%d required)", hiveData.totalBees, config.MIN_BEES_REQUIRED)
-        result.passes = true -- Pass if they don't have enough bees (might be new)
-        result.details.skipped = true
+        result.passes = false
+        result.percentAtLevel = 0
+        result.details = {
+            totalBees = hiveData.totalBees,
+            beesAtLevel = 0,
+            percentAtLevel = 0,
+            avgLevel = hiveData.avgLevel,
+            giftedCount = hiveData.giftedCount
+        }
         return result
     end
     
@@ -277,11 +284,11 @@ function Scanner.CheckRequirements(hiveData, config)
     -- Check if meets percentage requirement
     if result.percentAtLevel >= config.REQUIRED_PERCENT then
         result.passes = true
-        result.reason = string.format("%.1f%% bees at Lv%d+ (%.1f%% required)", 
+        result.reason = string.format("%.1f%% bees at LVL %d+ (%.1f%% required)", 
             result.percentAtLevel * 100, config.MINIMUM_LEVEL, config.REQUIRED_PERCENT * 100)
     else
         result.passes = false
-        result.reason = string.format("Only %.1f%% bees at Lv%d+ (%.1f%% required)", 
+        result.reason = string.format("Only %.1f%% bees at LVL %d+ (%.1f%% required)", 
             result.percentAtLevel * 100, config.MINIMUM_LEVEL, config.REQUIRED_PERCENT * 100)
     end
     
