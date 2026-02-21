@@ -8,7 +8,7 @@ local Config = {}
 -- =============================================
 -- VERSION (auto-bumped by CI — do not edit manually)
 -- =============================================
-Config.VERSION = "1.4.3"
+Config.VERSION = "1.4.4"
 
 -- =============================================
 -- MONITORING REQUIREMENTS
