@@ -15,6 +15,7 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 - 🔄 **Auto-Cleanup** - Re-execute script anytime, automatically cleans up previous session
 - ✅ **Dry Run Mode** - Test the system without actually kicking anyone
 - 🏷️ **Auto Versioning** - Semantic version bumped automatically by CI on every push
+- 📝 **Centralized Logging** - Level-based logging with in-memory buffer; configurable console output to avoid detection
 
 ## Installation
 
@@ -37,6 +38,7 @@ _G.BSSMonitorConfig = {
     REQUIRED_PERCENT = 0.80,   -- 80% of bees must meet level
     GRACE_PERIOD = 20,         -- Seconds before checking new players
     MOBILE_MODE = true,        -- Force mobile mode (nil = auto-detect)
+    LOG_LEVEL = "WARN",        -- DEBUG, INFO, WARN, ERROR, CRITICAL, NONE
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/loader.lua"))()
 ```
@@ -59,6 +61,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `SHOW_GUI` | true | Show GUI (disabled by default for compatibility) |
 | `USE_KICK` | false | Use `/kick` instead of `/ban` (some servers only support kick) |
 | `MOBILE_MODE` | nil | nil = auto-detect, true = force mobile, false = force desktop |
+| `LOG_LEVEL` | "WARN" | Console output level: DEBUG, INFO, WARN, ERROR, CRITICAL, NONE |
 | `WEBHOOK_ENABLED` | true | Enable Discord webhook notifications |
 | `WEBHOOK_URL` | "" | Your Discord webhook URL |
 | `DISCORD_USER_ID` | "" | Your Discord user ID for @mention in mobile ban notifications |
@@ -89,6 +92,12 @@ m.hideGui()            -- Hide the GUI
 -- Testing
 m.testChat()           -- Test chat functionality
 m.testWebhook()        -- Test webhook connection
+
+-- Logging
+m.setLogLevel("DEBUG") -- Change console log level at runtime
+m.setLogLevel("NONE")  -- Silence all console output
+m.getLogs(20)          -- Get last 20 log entries
+m.clearLogs()          -- Clear log buffer
 
 -- Session
 m.cleanup()            -- Manually cleanup and unload the script
@@ -121,6 +130,36 @@ If VirtualInputManager doesn't successfully remove the player on mobile:
 4. You paste the command into Roblox chat manually
 
 Set `DISCORD_USER_ID` in your config for @mention pings to work.
+
+## Logging
+
+The Logger module stores all logs in an in-memory buffer (100 entries) regardless of console output level. This lets you debug via the GUI or `_G.BSSMonitor.getLogs()` without flooding the Roblox console.
+
+### Log Levels
+
+| Level | Value | What prints to console |
+|---|---|---|
+| `DEBUG` | 1 | Everything — scan results, state changes |
+| `INFO` | 2 | Player joins/leaves, passes, skips, start/stop |
+| `WARN` | 3 | **Default** — Ban attempts, verified bans, mobile fallback |
+| `ERROR` | 4 | Ban failures and errors only |
+| `CRITICAL` | 5 | Fatal errors only |
+| `NONE` | 6 | Zero console output (stealth mode) |
+
+### Usage
+
+```lua
+-- Set in config before loading
+_G.BSSMonitorConfig = { LOG_LEVEL = "NONE" }
+
+-- Or change at runtime
+_G.BSSMonitor.setLogLevel("DEBUG")   -- See everything
+_G.BSSMonitor.setLogLevel("NONE")    -- Complete silence
+
+-- Query logs from buffer
+_G.BSSMonitor.getLogs(10)            -- Last 10 entries (all levels)
+_G.BSSMonitor.clearLogs()            -- Clear buffer
+```
 
 **GUI Status Indicators:**
 - ✅ Green = Verified (player left server)
@@ -194,19 +233,31 @@ By default, `USE_KICK = true` which uses `/kick` instead of `/ban`. This is more
 
 ```
 BSS-Monitor/
-├── loader.lua          # Loadstring entry point (with cache-busting)
-├── main.lua            # Main orchestrator (with auto-cleanup)
+├── loader.lua              # Loadstring entry point (with cache-busting)
+├── main.lua                # Main orchestrator (with auto-cleanup)
 ├── modules/
-│   ├── config.lua      # Configuration & VERSION (auto-bumped by CI)
-│   ├── scanner.lua     # Hive scanning logic
-│   ├── monitor.lua     # Monitoring loop & ban verification
-│   ├── chat.lua        # Chat command sender (VirtualInputManager)
-│   ├── webhook.lua     # Discord integration
-│   └── gui.lua         # User interface (shows version in footer)
+│   ├── config.lua          # Configuration & VERSION (auto-bumped by CI)
+│   ├── logger.lua          # Centralized logging with level-based filtering
+│   ├── scanner.lua         # Hive scanning logic
+│   ├── chat.lua            # Chat command sender (VirtualInputManager)
+│   ├── monitor/
+│   │   ├── state.lua       # Shared state tables & utility functions
+│   │   ├── ban.lua         # Ban execution, verification & player checking
+│   │   ├── cycle.lua       # Scan cycle, start/stop/toggle, status
+│   │   └── init.lua        # Monitor orchestrator & player event connections
+│   ├── webhook/
+│   │   ├── http.lua        # HTTP abstraction & base Send function
+│   │   ├── embeds.lua      # Discord embed builders for all notification types
+│   │   └── init.lua        # Webhook orchestrator & unified API
+│   └── gui/
+│       ├── theme.lua       # Color palette & size constants
+│       ├── helpers.lua     # UI utility functions (corners, strokes, labels)
+│       ├── components.lua  # UI component builders (player entries, stat cards)
+│       └── init.lua        # GUI orchestrator & display management
 ├── .github/
 │   └── workflows/
 │       └── version-bump.yml  # Auto semantic versioning CI
-├── tests/              # Test scripts (gitignored)
+├── tests/                  # Test scripts (gitignored)
 └── README.md
 ```
 
