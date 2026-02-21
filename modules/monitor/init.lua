@@ -29,6 +29,15 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
     Ban = ban
     Cycle = cycle
 
+    -- Hard reset state tables on re-init to avoid carrying over stale data
+    State.PlayerJoinTimes = {}
+    State.BannedPlayers = {}
+    State.KickedTimeouts = {}
+    State.CheckedPlayers = {}
+    State.LastScanResults = {}
+    State.PendingBans = {}
+    State.NoHiveDataSince = {}
+
     -- Clean up existing connections first (in case of re-init)
     for _, conn in ipairs(State.Connections) do
         pcall(function() conn:Disconnect() end)
