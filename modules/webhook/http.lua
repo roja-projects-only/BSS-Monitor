@@ -53,7 +53,7 @@ function Http.Send(config, embeds, content)
     for _, embed in ipairs(embeds) do
         embed.timestamp = embed.timestamp or os.date("!%Y-%m-%dT%H:%M:%SZ")
         if not embed.footer then
-            embed.footer = { text = "BSS Monitor \xF0\x9F\x90\x9D" }
+            embed.footer = { text = "BSS Monitor v" .. (config.VERSION or "?") .. " \xF0\x9F\x90\x9D" }
         end
     end
 
