@@ -12,17 +12,56 @@ A modular Roblox Lua script for **Bee Swarm Simulator** private server monitorin
 ### Module Structure
 ```
 modules/
-├── config.lua    # Configuration, whitelist, mobile & Discord notification settings
-├── scanner.lua   # Hive scanning, bee level/gifted detection, requirement checking
-├── monitor.lua   # Main monitoring loop, state management, ban verification
-├── chat.lua      # Chat command sender (VirtualInputManager on all platforms)
-├── webhook.lua   # Discord webhook notifications (standard + mobile fallback with @mention)
-└── gui.lua       # Collapsible GUI panel (player list, banned list, stats, draggable)
+├── config.lua          # Configuration, whitelist, mobile & Discord notification settings
+├── logger.lua          # Centralized logging with level-based console filtering & in-memory buffer
+├── scanner.lua         # Hive scanning, bee level/gifted detection, requirement checking
+├── chat.lua            # Chat command sender (VirtualInputManager), command queue with 1s delay
+├── monitor/
+│   ├── state.lua       # Shared state tables & utility functions (delegates logging to Logger)
+│   ├── ban.lua         # Ban execution, verification, player checking & manual bans
+│   ├── cycle.lua       # Scan cycle, scan timeout kicks, start/stop/toggle, status
+│   └── init.lua        # Monitor orchestrator: inits sub-modules, player event connections, unified API
+├── webhook/
+│   ├── http.lua        # HTTP request abstraction (multi-executor), Discord colors, base Send function
+│   ├── embeds.lua      # Discord embed builders for all notification types
+│   └── init.lua        # Webhook orchestrator: merges Http + Embeds into unified API
+└── gui/
+    ├── theme.lua       # Color palette (Theme.C table) & layout size constants
+    ├── helpers.lua     # UI primitives: addCorner, addStroke, addShadow, label, sectionHeader
+    ├── components.lua  # UI component builders: toggle button, title bar, player/banned entries, footer
+    └── init.lua        # GUI orchestrator: Create(), Update*(), collapse, drag, live refresh timer
 ```
 
 ### Entry Points
-- `loader.lua` - Loadstring entry, loads modules from GitHub with cache-busting. GUI creation gated by `Config.SHOW_GUI`.
+- `loader.lua` - Loadstring entry, loads all modules from GitHub with cache-busting (`?v=os.time()`). Loads sub-modules individually (e.g. `loadModule("gui/theme")`, `loadModule("monitor/state")`). GUI creation gated by `Config.SHOW_GUI`.
 - `main.lua` - Direct execution entry (for local testing). Always creates GUI, handles auto-cleanup of previous sessions, stores `_connections` for cleanup.
+
+### Module Loading Order (loader.lua)
+1. Logger (standalone, no deps)
+2. Config (standalone)
+3. Scanner (standalone)
+4. Chat (standalone)
+5. Monitor sub-modules: state → ban → cycle → init
+6. Webhook sub-modules: http → embeds → init
+7. GUI sub-modules: theme → helpers → components → init
+8. Initialization chain (see below)
+
+### Initialization Chain
+```lua
+Logger.Init(Config)
+MonitorState.Init(Logger)
+Chat.Init(Config)
+WebhookEmbeds.Init(WebhookHttp)
+Webhook.Init(WebhookHttp, WebhookEmbeds)
+GUIHelpers.Init(GUITheme)
+GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat)
+GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents)
+Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, MonitorCycle)
+  └→ Ban.Init(State, Config, Scanner, Webhook, Chat, GUI)
+  └→ Cycle.Init(State, Ban, Config, Scanner, Webhook, GUI, Chat)
+```
+
+**Key constraint:** Each module is loaded via `loadstring(game:HttpGet(url))()` individually. Sub-modules cannot `require()` each other — all dependencies are injected via `Init()` functions.
 
 ### Auto-Cleanup on Re-execution
 Script can be re-executed safely. `main.lua` checks for existing `_G.BSSMonitor` and:
@@ -63,17 +102,23 @@ _G.BSSMonitor.Config, .Scanner, .Webhook, .Chat, .GUI, .Monitor
 ```
 Scanner.ScanAllHives() → {playerName: hiveData}
     ↓
-Monitor.CheckPlayer() → check whitelist → grace period → requirements vs Config
+Cycle.RunCycle() → for each player:
+    Ban.CheckPlayer() → check whitelist → grace period → requirements vs Config
     ↓
-(if fails) → ExecuteBanWithVerification():
-    1. Try VirtualInputManager /kick or /ban (both platforms)
-    2. Wait for player to leave (3s mobile / 10s desktop)
-    3. Desktop: retry up to 3x if still in server
-    4. Mobile: fall back to Webhook.SendMobileBanNotification() with @mention + tap-to-copy
-    5. On success: Webhook.SendBanNotification() (standard notification)
+  (if fails) → Ban.ExecuteWithVerification():
+      1. Try VirtualInputManager /kick or /ban (both platforms)
+      2. Wait for player to leave (3s mobile / 10s desktop)
+      3. Desktop: retry up to 3x if still in server
+      4. Mobile: fall back to Webhook.SendMobileBanNotification() with @mention + tap-to-copy
+      5. On success: Webhook.SendBanNotification() (standard notification)
+    ↓
+  Scan timeout check → players with no hive data after GRACE_PERIOD + SCAN_TIMEOUT → /kick
     ↓
 GUI.UpdateDisplay() → player list + banned list with status indicators
 ```
+
+### Scan Timeout
+After each scan cycle, `Cycle.RunCycle()` checks all non-whitelisted players. If a player has been in the server for `GRACE_PERIOD + SCAN_TIMEOUT` seconds (default 20+90=110s) and still has no entry in `LastScanResults` (no hive data found), they are kicked via `/kick` (always kick, never ban). A Discord webhook is sent with details. Tracked via `BannedPlayers[name].scanTimeout = true`.
 
 ## Platform Detection & Chat
 
@@ -109,11 +154,13 @@ When VIM ban doesn't remove the player on mobile (checked after 3s):
 
 ### Webhook Notification Types
 ```lua
-Webhook.Send(config, title, desc, color, fields, content)  -- Generic (content = text outside embed for @mentions)
-Webhook.SendBanNotification(config, player, hiveData, checkResult)       -- Desktop: standard ban notification
-Webhook.SendMobileBanNotification(config, player, hiveData, checkResult) -- Mobile: @mention + tap-to-copy /ban
+Webhook.Send(config, embeds, content)  -- Base send (content = text outside embed for @mentions)
+Webhook.SendBanNotification(config, player, hiveData, checkResult)       -- Standard ban notification
+Webhook.SendMobileBanNotification(config, player, hiveData, checkResult) -- Mobile: @mention + tap-to-copy
 Webhook.SendStartNotification(config)          -- Monitor started
 Webhook.SendStopNotification(config)           -- Monitor stopped
+Webhook.SendPlayerJoinNotification(config, player, count, max)           -- Player joined
+Webhook.SendPlayerLeaveNotification(config, player, count, max)          -- Player left (non-ban)
 Webhook.SendBanFailedNotification(config, player, reason, attempts)      -- Ban verification failed
 Webhook.SendBanVerifiedNotification(config, player, reason, attempts)    -- Ban verified
 ```
@@ -145,13 +192,17 @@ elseif fluxus and fluxus.request then return fluxus.request(options)
 
 ### Player State Tracking
 ```lua
-Monitor.IsRunning = false          -- Monitoring loop active
-Monitor.PlayerJoinTimes = {}       -- {playerName: tick()} for grace period
-Monitor.BannedPlayers = {}         -- {playerName: {time, reason, verified, attempts, dryRun, mobileMode, webhookNotified, ...}}
-Monitor.CheckedPlayers = {}        -- {playerName: {passed, reason, details}} players that passed checks
-Monitor.PendingBans = {}           -- {playerName: {startTime, reason, attempts, verified}} awaiting verification
-Monitor.ActionLog = {}             -- Recent log entries (max 50, LIFO)
-Monitor.LastScanResults = {}       -- Last ScanAllHives() results
+-- In monitor/state.lua (shared state):
+State.IsRunning = false            -- Monitoring loop active
+State.PlayerJoinTimes = {}         -- {playerName: tick()} for grace period
+State.BannedPlayers = {}           -- {playerName: {time, reason, verified, attempts, dryRun, mobileMode, webhookNotified, scanTimeout, ...}}
+State.CheckedPlayers = {}          -- {playerName: {passed, reason, details}} players that passed checks
+State.PendingBans = {}             -- {playerName: {startTime, reason, attempts, verified}} awaiting verification
+State.LastScanResults = {}         -- Last ScanAllHives() results
+State.Connections = {}             -- RBXScriptConnections for cleanup
+
+-- Logger buffer (in logger.lua):
+Logger.Buffer = {}                 -- In-memory log entries (max 100, newest first)
 ```
 
 ### Ban Verification (Unified)
@@ -172,6 +223,7 @@ Monitor.ExecuteBanWithVerification(playerName, reason, maxRetries, timeout)
 -- Skip (pass) if totalBees < MIN_BEES_REQUIRED (might be new player)
 -- Skip if in WHITELIST (case-insensitive match)
 -- Skip if in grace period (< GRACE_PERIOD seconds since join)
+-- Kick (always /kick) if no hive data after GRACE_PERIOD + SCAN_TIMEOUT seconds
 ```
 
 ### Scanner Detection Methods
@@ -214,6 +266,7 @@ _G.BSSMonitorConfig = {
     -- Timing
     CHECK_INTERVAL = 30,        -- Seconds between scans
     GRACE_PERIOD = 20,          -- Seconds before first check
+    SCAN_TIMEOUT = 90,          -- Seconds after grace before kicking (no hive data)
     BAN_COOLDOWN = 5,           -- Seconds between ban commands
 
     -- Behavior
@@ -247,46 +300,70 @@ Config.RemoveFromWhitelist(username)  -- Returns true if removed
 ### Module Initialization
 Modules export tables with functions. Init with dependencies:
 ```lua
+Logger.Init(Config)
+MonitorState.Init(Logger)
 Chat.Init(Config)
-GUI.Init(Config, Monitor, Chat)
-Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
+WebhookEmbeds.Init(WebhookHttp)
+Webhook.Init(WebhookHttp, WebhookEmbeds)
+GUIHelpers.Init(GUITheme)
+GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat)
+GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents)
+Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, MonitorCycle)
 ```
 
 ### GUI Details
 Collapsible panel with dark theme, positioned on left side of screen. Key features:
 - **Toggle button**: Bee emoji (🐝) in bottom-right corner, shows/hides main panel
-- **Title bar**: Golden accent, "BSS MONITOR" with player count, collapse arrow
-- **Stats row**: Player count (X/6) + status indicator (ACTIVE/PAUSED)
-- **Player list**: Per-player entries showing name, avg level, percentage at required level. Color-coded: green (pass), red (fail), orange (too few bees/warning)
+- **Title bar**: Golden accent, "BSS Monitor" with player count, collapse arrow. Drag restricted to title bar only.
+- **Stats row**: Player count (X/6) + status indicator (ACTIVE/PAUSED) with platform emoji
+- **Player list**: Per-player entries showing name, avg level, percentage at required level. Color-coded: green (pass), red (fail), orange (grace/too few bees), blue (whitelisted/scanning)
+- **Scanning state**: Displays "SCANNING" (no dots) in blue while hive data is loading
+- **Grace period**: Shows "⏳ Xs" countdown. Live refresh timer extends 2s past grace end to avoid hang at "1s"
 - **Banned list**: Status indicators per player: ✅ verified, ❌ failed, ⚠️ dry run, ⏳ pending
-- **Draggable**: `mainFrame.Active = true`, `mainFrame.Draggable = true`
-- **Collapse animation**: TweenService, Quart easing, 0.25s
+- **Footer**: Mode label (DRY RUN / MOBILE / DESKTOP) + version
+- **Draggable**: Custom drag on title bar only (not full panel)
+- **Collapse animation**: TweenService, Quart easing, 0.2s
 
 **GUI parent priority:** `gethui()` → `CoreGui` → `PlayerGui`
 
 ### Color Theme (GUI)
+Defined in `gui/theme.lua` as `Theme.C`:
 ```lua
-Colors.bg        = Color3.fromRGB(18, 18, 22)      -- Dark background
-Colors.bgSecondary = Color3.fromRGB(28, 28, 35)
-Colors.bgTertiary  = Color3.fromRGB(38, 38, 48)
-Colors.accent    = Color3.fromRGB(255, 193, 7)      -- Golden/amber
-Colors.accentDark = Color3.fromRGB(200, 150, 0)
-Colors.text      = Color3.fromRGB(245, 245, 245)
-Colors.textMuted = Color3.fromRGB(160, 160, 170)
-Colors.success   = Color3.fromRGB(76, 175, 80)      -- Green
-Colors.danger    = Color3.fromRGB(244, 67, 54)      -- Red
-Colors.warning   = Color3.fromRGB(255, 152, 0)      -- Orange
-Colors.info      = Color3.fromRGB(33, 150, 243)     -- Blue
+Theme.C = {
+    bg        = Color3.fromRGB(16, 16, 20),       -- Dark background
+    surface   = Color3.fromRGB(24, 24, 30),
+    surfaceHL = Color3.fromRGB(32, 32, 40),
+    elevated  = Color3.fromRGB(40, 40, 50),
+    accent    = Color3.fromRGB(255, 193, 7),       -- Golden/amber
+    accentDim = Color3.fromRGB(180, 135, 5),
+    text      = Color3.fromRGB(240, 240, 245),
+    textSec   = Color3.fromRGB(150, 150, 165),
+    textDim   = Color3.fromRGB(100, 100, 115),
+    green     = Color3.fromRGB(72, 199, 116),
+    red       = Color3.fromRGB(237, 66, 69),
+    orange    = Color3.fromRGB(245, 166, 35),
+    blue      = Color3.fromRGB(88, 101, 242),
+    -- Subtle tint backgrounds for entries
+    greenBg, redBg, orangeBg, blueBg, verifiedBg, failedBg, pendingBg, dryRunBg
+}
 ```
 
 ### Logging
-Use `Monitor.Log(type, message)` — types:
-- **Actions**: "Ban", "BanVerified", "BanFailed", "Pass", "Skip", "Scan"
-- **Lifecycle**: "Start", "Stop", "Info", "Error"
-- **Players**: "PlayerJoin", "PlayerLeave"
-- **Platform**: "Mobile"
+Centralized via `modules/logger.lua`. All logs stored in-memory (`Logger.Buffer`, max 100 entries) regardless of console output level. Console output controlled by `Config.LOG_LEVEL`.
 
-Log entries stored in `Monitor.ActionLog` (max 50, newest first) with `{time, type, message}`.
+**Log function:** `Logger.Log(actionType, message)` or via shortcuts `Logger.Debug()`, `Logger.Info()`, `Logger.Warn()`, `Logger.Error()`.
+
+**State module delegates:** `State.Log(type, message)` → `Logger.Log(type, message)`
+
+**Action types → levels:**
+- **DEBUG (1)**: `Scan`
+- **INFO (2)**: `Start`, `Stop`, `Info`, `Pass`, `Skip`, `PlayerJoin`, `PlayerLeave`
+- **WARN (3)**: `Ban`, `BanVerified`, `Mobile`
+- **ERROR (4)**: `BanFailed`, `Error`
+
+**Listeners:** `Logger.OnLog(callback)` — GUI or other modules can register for real-time log notifications.
+
+**Global access:** `_G.BSSMonitorLogger` is set early in loader.lua so modules that load before full init can access the logger.
 
 ## Executor Compatibility
 Tested on:

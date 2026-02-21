@@ -12,6 +12,7 @@ Private server monitoring tool for **Bee Swarm Simulator**. Automatically monito
 - 🔔 **Discord Webhooks** - Get notifications when players are kicked/banned
 - 👑 **Whitelist** - Protect yourself and friends from being checked
 - 🖥️ **Optional GUI** - Player list with status indicators and live version display
+- ⏰ **Scan Timeout** - Players with no hive data after grace period + 90s are automatically kicked
 - 🔄 **Auto-Cleanup** - Re-execute script anytime, automatically cleans up previous session
 - ✅ **Dry Run Mode** - Test the system without actually kicking anyone
 - 🏷️ **Auto Versioning** - Semantic version bumped automatically by CI on every push
@@ -37,6 +38,7 @@ _G.BSSMonitorConfig = {
     MINIMUM_LEVEL = 17,        -- Minimum bee level
     REQUIRED_PERCENT = 0.80,   -- 80% of bees must meet level
     GRACE_PERIOD = 20,         -- Seconds before checking new players
+    SCAN_TIMEOUT = 90,         -- Seconds after grace before kicking (no hive data)
     MOBILE_MODE = true,        -- Force mobile mode (nil = auto-detect)
     LOG_LEVEL = "WARN",        -- DEBUG, INFO, WARN, ERROR, CRITICAL, NONE
 }
@@ -54,6 +56,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/roja-projects-only/BS
 | `MIN_BEES_REQUIRED` | 45 | Skip check if player has fewer bees (might be new) |
 | `CHECK_INTERVAL` | 30 | Seconds between automatic scans |
 | `GRACE_PERIOD` | 20 | Seconds to wait after player joins before checking |
+| `SCAN_TIMEOUT` | 90 | Seconds after grace period before kicking players with no hive data |
 | `BAN_COOLDOWN` | 5 | Seconds between ban commands |
 | `MAX_PLAYERS` | 6 | Max players in private server |
 | `DRY_RUN` | false | If true, logs but doesn't actually kick/ban |
@@ -122,6 +125,9 @@ Simply run the loadstring again to reload with updated settings.
 4. **Mobile**: If player didn't leave after 3s, falls back to Discord webhook
 5. Sends Discord notification on success or failure
 
+### Scan Timeout
+If a player has been in the server for `GRACE_PERIOD + SCAN_TIMEOUT` seconds (default 20 + 90 = 110s) and still has no hive data, they are automatically kicked via `/kick` (always kick, never ban). This catches AFK players or those who never placed a hive. A Discord webhook notification is sent with details.
+
 ### Mobile Fallback
 If VirtualInputManager doesn't successfully remove the player on mobile:
 1. Sends Discord webhook with `<@YOUR_USER_ID>` to trigger a push notification
@@ -160,6 +166,17 @@ _G.BSSMonitor.setLogLevel("NONE")    -- Complete silence
 _G.BSSMonitor.getLogs(10)            -- Last 10 entries (all levels)
 _G.BSSMonitor.clearLogs()            -- Clear buffer
 ```
+
+### Action Types
+
+| Action | Level | Description |
+|---|---|---|
+| `Scan` | DEBUG | Scan cycle details |
+| `Start` / `Stop` / `Info` | INFO | Monitor lifecycle events |
+| `Pass` / `Skip` | INFO | Player passed or was skipped |
+| `PlayerJoin` / `PlayerLeave` | INFO | Player connection events |
+| `Ban` / `BanVerified` / `Mobile` | WARN | Ban attempts and results |
+| `BanFailed` / `Error` | ERROR | Failures |
 
 **GUI Status Indicators:**
 - ✅ Green = Verified (player left server)
