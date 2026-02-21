@@ -274,11 +274,23 @@ end
 -- ═══════════════════════════════════════
 -- KICK CONFIRMED (scan timeout player left)
 -- ═══════════════════════════════════════
-function Embeds.SendKickConfirmedNotification(config, playerName)
+function Embeds.SendKickConfirmedNotification(config, playerName, elapsedSeconds)
     local embed = {
-        title = E.pass .. "  Kick Confirmed",
-        color = C().GREEN,
-        description = string.format("**%s** has left the server (scan timeout).", playerName),
+        title = E.timeout .. "  Scan Timeout — Player Kicked",
+        color = C().ORANGE,
+        description = string.format("**%s** was kicked and has left the server.", playerName),
+        fields = {
+            {
+                name = "Reason",
+                value = "`No hive data detected`",
+                inline = true
+            },
+            {
+                name = "Missing For",
+                value = elapsedSeconds and string.format("`%ds`", elapsedSeconds) or "`unknown`",
+                inline = true
+            },
+        },
     }
     return Http.Send(config, embed)
 end

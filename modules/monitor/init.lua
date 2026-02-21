@@ -86,7 +86,8 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         if State.KickedTimeouts[player.Name] then
             State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
             if Webhook then
-                Webhook.SendKickConfirmedNotification(Config, player.Name)
+                local kickData = State.KickedTimeouts[player.Name]
+                Webhook.SendKickConfirmedNotification(Config, player.Name, kickData.elapsedSeconds)
             end
         end
 
@@ -99,6 +100,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         State.PlayerJoinTimes[player.Name] = nil
         State.CheckedPlayers[player.Name] = nil
         State.KickedTimeouts[player.Name] = nil
+        State.NoHiveDataSince[player.Name] = nil
         State.Log("PlayerLeave", player.Name .. " left the server")
 
         if not wasBanned and Webhook then

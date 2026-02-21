@@ -18,6 +18,7 @@ State.CheckedPlayers = {}     -- Track who passed checks
 State.LastScanResults = {}    -- Last scan results
 State.PendingBans = {}        -- Players waiting for ban verification
 State.Connections = {}        -- Store RBXScriptConnections for cleanup
+State.NoHiveDataSince = {}    -- Track when hive data first went missing per player
 
 -- Logger reference (set by Init)
 local Logger = nil

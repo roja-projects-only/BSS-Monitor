@@ -75,18 +75,22 @@ function Cycle.RunCycle()
         end
     end
 
-    -- Scan timeout: kick players with no hive data after SCAN_TIMEOUT past grace period
+    -- Scan timeout: kick players with no hive data for SCAN_TIMEOUT seconds after grace period
     local scanTimeout = Config.SCAN_TIMEOUT or 90
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local playerName = player.Name
             if not Config.IsWhitelisted(playerName) and not State.BannedPlayers[playerName] and not State.KickedTimeouts[playerName] then
                 local joinTime = State.PlayerJoinTimes[playerName]
-                if joinTime then
-                    local elapsed = tick() - joinTime
-                    if elapsed > Config.GRACE_PERIOD + scanTimeout then
-                        if not State.LastScanResults[playerName] then
-                            State.Log("Ban", string.format("⏰ %s: no hive data after %ds - kicking (scan timeout)", playerName, math.floor(elapsed)))
+                if joinTime and (tick() - joinTime) > Config.GRACE_PERIOD then
+                    if not State.LastScanResults[playerName] then
+                        -- Start or continue tracking consecutive missing hive data
+                        if not State.NoHiveDataSince[playerName] then
+                            State.NoHiveDataSince[playerName] = tick()
+                        end
+                        local missingFor = math.floor(tick() - State.NoHiveDataSince[playerName])
+                        if missingFor >= scanTimeout then
+                            State.Log("Ban", string.format("⏰ %s: no hive data for %ds - kicking (scan timeout)", playerName, missingFor))
                             if not Config.DRY_RUN then
                                 coroutine.wrap(function()
                                     local success, err = Chat.SendKickCommand(playerName)
@@ -104,13 +108,16 @@ function Cycle.RunCycle()
                             end
                             State.KickedTimeouts[playerName] = {
                                 time = tick(),
+                                elapsedSeconds = missingFor,
                                 reason = "No hive data (scan timeout)",
                                 dryRun = Config.DRY_RUN
                             }
-                            if Webhook then
-                                Webhook.SendScanTimeoutNotification(Config, playerName, math.floor(elapsed))
-                            end
+                            State.NoHiveDataSince[playerName] = nil
+                            -- Webhook sent only when player confirms leave (in PlayerRemoving)
                         end
+                    else
+                        -- Player has hive data this cycle — reset the missing counter
+                        State.NoHiveDataSince[playerName] = nil
                     end
                 end
             end
