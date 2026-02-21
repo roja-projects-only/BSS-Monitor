@@ -65,7 +65,7 @@ end
 -- PLAYER LEAVE (natural leave only, not bans)
 -- ═══════════════════════════════════════
 local function formatPlaytime(seconds)
-    if not seconds then return "\u2014" end
+    if not seconds then return "\xE2\x80\x94" end
     local h = math.floor(seconds / 3600)
     local m = math.floor((seconds % 3600) / 60)
     local s = seconds % 60
