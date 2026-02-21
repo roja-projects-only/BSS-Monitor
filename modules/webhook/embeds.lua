@@ -6,6 +6,30 @@
 
 local Embeds = {}
 
+-- Custom Discord server emojis
+local E = {
+    alert   = "<:bss_alert:1474707497813282868>",
+    ban     = "<:bss_ban:1474707504205402152>",
+    banfail = "<:bss_banfail:1474707512648400977>",
+    banok   = "<:bss_banok:1474707521804701778>",
+    bee     = "<:bss_bee:1474707526632083668>",
+    config  = "<:bss_config:1474707530604351590>",
+    desktop = "<:bss_desktop:1474707539391156345>",
+    dryrun  = "<:bss_dryrun:1474707541853212722>",
+    fail    = "<:bss_fail:1474707458537689109>",
+    gifted  = "<:bss_gifted:1474707461943595150>",
+    hive    = "<:bss_hive:1474707464418099323>",
+    join    = "<:bss_join:1474707467412967454>",
+    leave   = "<:bss_leave:1474707469908316200>",
+    level   = "<:bss_level:1474707473112895488>",
+    mobile  = "<:bss_mobile:1474707476476723292>",
+    pass    = "<:bss_pass:1474707478594977832>",
+    players = "<:bss_players:1474707480452927691>",
+    start   = "<:bss_start:1474707483514765392>",
+    stop    = "<:bss_stop:1474707492692037652>",
+    timeout = "<:bss_timeout:1474707495040712755>",
+}
+
 -- Dependencies (set by Init)
 local Http
 
@@ -23,12 +47,12 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendPlayerJoinNotification(config, playerName, playerCount, maxPlayers)
     local embed = {
-        title = "\xF0\x9F\x93\xA5  Player Joined",
+        title = E.join .. "  Player Joined",
         color = C().BLUE,
         description = string.format("**%s** joined the server.", playerName),
         fields = {
             {
-                name = "\xF0\x9F\x91\xA5 Players",
+                name = E.players .. " Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
@@ -42,12 +66,12 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers)
     local embed = {
-        title = "\xF0\x9F\x93\xA4  Player Left",
+        title = E.leave .. "  Player Left",
         color = C().DARK,
         description = string.format("**%s** left the server.", playerName),
         fields = {
             {
-                name = "\xF0\x9F\x91\xA5 Players",
+                name = E.players .. " Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
@@ -64,7 +88,7 @@ function Embeds.SendBanNotification(config, playerName, hiveData, checkResult)
     local reqPct = config.REQUIRED_PERCENT * 100
 
     local embed = {
-        title = config.DRY_RUN and "\xE2\x9A\xA0\xEF\xB8\x8F  DRY RUN \xE2\x80\x94 Would Ban" or "\xF0\x9F\x94\xA8  Player Banned",
+        title = config.DRY_RUN and (E.dryrun .. "  DRY RUN — Would Ban") or (E.ban .. "  Player Banned"),
         color = config.DRY_RUN and C().YELLOW or C().RED,
         description = string.format(
             ">>> **%s** was removed for not meeting requirements.",
@@ -72,15 +96,15 @@ function Embeds.SendBanNotification(config, playerName, hiveData, checkResult)
         ),
         fields = {
             {
-                name = "\xF0\x9F\x93\x8A Hive Stats",
+                name = E.hive .. " Hive Stats",
                 value = string.format(
-                    "```\n\xF0\x9F\x90\x9D Bees: %d   \xE2\xAD\x90 Gifted: %d\n\xF0\x9F\x93\x88 Avg Level: %.1f\n```",
+                    "```\n" .. E.bee .. " Bees: %d   " .. E.gifted .. " Gifted: %d\n" .. E.level .. " Avg Level: %.1f\n```",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = "\xE2\x9D\x8C Requirement",
+                name = E.fail .. " Requirement",
                 value = string.format(
                     "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
@@ -109,7 +133,7 @@ function Embeds.SendMobileBanNotification(config, playerName, hiveData, checkRes
     local command = "/ban " .. playerName
 
     local embed = {
-        title = "\xF0\x9F\x9A\xA8  Action Required \xE2\x80\x94 Ban Player",
+        title = E.alert .. "  Action Required — Ban Player",
         color = C().RED,
         description = string.format(
             ">>> Auto-ban failed for **%s**. Use the command below to ban manually.",
@@ -117,25 +141,25 @@ function Embeds.SendMobileBanNotification(config, playerName, hiveData, checkRes
         ),
         fields = {
             {
-                name = "\xF0\x9F\x93\xB1 Mobile \xE2\x80\x94 Tap to Copy",
+                name = E.mobile .. " Mobile — Tap to Copy",
                 value = "`" .. command .. "`",
                 inline = false
             },
             {
-                name = "\xF0\x9F\x96\xA5\xEF\xB8\x8F Desktop",
+                name = E.desktop .. " Desktop",
                 value = "```\n" .. command .. "\n```",
                 inline = false
             },
             {
-                name = "\xF0\x9F\x93\x8A Hive Stats",
+                name = E.hive .. " Hive Stats",
                 value = string.format(
-                    "`\xF0\x9F\x90\x9D %d bees` \xC2\xB7 `\xE2\xAD\x90 %d gifted` \xC2\xB7 `\xF0\x9F\x93\x88 Avg LVL %.1f`",
+                    "`" .. E.bee .. " %d bees` · `" .. E.gifted .. " %d gifted` · `" .. E.level .. " Avg LVL %.1f`",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = "\xE2\x9D\x8C Requirement",
+                name = E.fail .. " Requirement",
                 value = string.format(
                     "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
@@ -146,7 +170,7 @@ function Embeds.SendMobileBanNotification(config, playerName, hiveData, checkRes
     }
 
     if config.DRY_RUN then
-        embed.title = "\xE2\x9A\xA0\xEF\xB8\x8F  DRY RUN \xE2\x80\x94 Would Need Manual Ban"
+        embed.title = E.dryrun .. "  DRY RUN — Would Need Manual Ban"
         embed.color = C().YELLOW
     end
 
@@ -164,12 +188,12 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendStartNotification(config)
     local embed = {
-        title = "\xF0\x9F\x9F\xA2  Monitor Started",
+        title = E.start .. "  Monitor Started",
         color = C().GREEN,
         description = "BSS Monitor is now watching this server.",
         fields = {
             {
-                name = "\xE2\x9A\x99\xEF\xB8\x8F Settings",
+                name = E.config .. " Settings",
                 value = string.format(
                     "```\nMin Level    : LVL %d\nRequired     : %.0f%%\nInterval     : %ds\nGrace Period : %ds\nDry Run      : %s\nWhitelisted  : %d players\n```",
                     config.MINIMUM_LEVEL,
@@ -191,7 +215,7 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendStopNotification(config)
     local embed = {
-        title = "\xF0\x9F\x94\xB4  Monitor Stopped",
+        title = E.stop .. "  Monitor Stopped",
         color = C().RED,
         description = "Server monitoring has been stopped.",
     }
@@ -203,10 +227,10 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendPlayerPassedNotification(config, playerName, hiveData, checkResult)
     local embed = {
-        title = "\xE2\x9C\x85  Player OK",
+        title = E.pass .. "  Player OK",
         color = C().GREEN,
         description = string.format(
-            "**%s** meets hive requirements.\n`%.0f%%` at LVL %d+ \xC2\xB7 `Avg LVL %.1f`",
+            "**%s** meets hive requirements.\n`%.0f%%` at LVL %d+ · `Avg LVL %.1f`",
             playerName,
             checkResult.percentAtLevel * 100,
             config.MINIMUM_LEVEL,
@@ -221,7 +245,7 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendScanTimeoutNotification(config, playerName, elapsedSeconds)
     local embed = {
-        title = "\xE2\x8F\xB0  Scan Timeout \xE2\x80\x94 Player Kicked",
+        title = E.timeout .. "  Scan Timeout — Player Kicked",
         color = C().ORANGE,
         description = string.format("**%s** was kicked for having no hive data after %d seconds.", playerName, elapsedSeconds),
     }
@@ -233,7 +257,7 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendKickConfirmedNotification(config, playerName)
     local embed = {
-        title = "\xE2\x9C\x85  Kick Confirmed",
+        title = E.pass .. "  Kick Confirmed",
         color = C().GREEN,
         description = string.format("**%s** has left the server (scan timeout).", playerName),
     }
@@ -245,7 +269,7 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendBanFailedNotification(config, playerName, reason, attempts)
     local embed = {
-        title = "\xE2\x9A\xA0\xEF\xB8\x8F  Ban Failed",
+        title = E.banfail .. "  Ban Failed",
         color = C().ORANGE,
         description = string.format(
             ">>> Could not remove **%s** after **%d** attempt%s.\nPlayer is still in the server.",
@@ -272,7 +296,7 @@ end
 -- ═══════════════════════════════════════
 function Embeds.SendBanVerifiedNotification(config, playerName, reason, attempts)
     local embed = {
-        title = "\xE2\x9C\x85  Ban Confirmed",
+        title = E.banok .. "  Ban Confirmed",
         color = C().GREEN,
         description = string.format(
             "**%s** has left the server.",
