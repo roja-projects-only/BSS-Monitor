@@ -1,6 +1,7 @@
 --[[
-    BSS Monitor - Monitor State & Logging
-    Shared state tables, logging, and utility functions
+    BSS Monitor - Monitor State
+    Shared state tables and utility functions.
+    Logging is delegated to the Logger module.
     https://github.com/roja-projects-only/BSS-Monitor
 ]]
 
@@ -13,42 +14,30 @@ State.IsRunning = false
 State.PlayerJoinTimes = {}    -- Track when players joined
 State.BannedPlayers = {}      -- Track who we've already banned
 State.CheckedPlayers = {}     -- Track who passed checks
-State.ActionLog = {}          -- Log of actions taken
 State.LastScanResults = {}    -- Last scan results
 State.PendingBans = {}        -- Players waiting for ban verification
 State.Connections = {}        -- Store RBXScriptConnections for cleanup
 
--- Logging function
+-- Logger reference (set by Init)
+local Logger = nil
+
+function State.Init(logger)
+    Logger = logger
+end
+
+-- Logging function (delegates to Logger)
 function State.Log(actionType, message)
-    local entry = {
-        time = os.date("%H:%M:%S"),
-        type = actionType,
-        message = message
-    }
-    table.insert(State.ActionLog, 1, entry)
-
-    -- Keep only last 50 entries
-    while #State.ActionLog > 50 do
-        table.remove(State.ActionLog)
+    if Logger then
+        Logger.Log(actionType, message)
     end
+end
 
-    -- Console log
-    local prefix = "[BSS Monitor]"
-    if actionType == "Ban" then
-        warn(prefix, "🚫", message)
-    elseif actionType == "BanVerified" then
-        warn(prefix, "✅🚫", message)
-    elseif actionType == "BanFailed" then
-        warn(prefix, "❌🚫", message)
-    elseif actionType == "Pass" then
-        print(prefix, "✅", message)
-    elseif actionType == "Skip" then
-        print(prefix, "⏭️", message)
-    elseif actionType == "Error" then
-        warn(prefix, "❌", message)
-    else
-        print(prefix, message)
+-- Convenience: get action log from Logger buffer
+function State.GetActionLog()
+    if Logger then
+        return Logger.Buffer
     end
+    return {}
 end
 
 -- Check if a player is in the server

@@ -60,6 +60,13 @@ Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some
 Config.MOBILE_MODE = nil           -- nil = auto-detect, true = force mobile, false = force desktop
 
 -- =============================================
+-- LOGGING SETTINGS
+-- =============================================
+Config.LOG_LEVEL = "WARN"          -- Console output level: DEBUG, INFO, WARN, ERROR, CRITICAL, NONE
+                                    -- All levels are always stored in-memory for GUI/debug access
+                                    -- Use "NONE" to completely silence console output
+
+-- =============================================
 -- DISCORD NOTIFICATION SETTINGS
 -- =============================================
 Config.DISCORD_USER_ID = ""         -- Discord user ID for @mention in ban notifications (e.g., "123456789012345678")

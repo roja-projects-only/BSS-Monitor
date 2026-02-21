@@ -91,7 +91,8 @@ task.defer(function()
     local recheck = detectMobile()
     if recheck ~= isMobile then
         isMobile = recheck
-        print("[BSS Monitor] Platform re-detected: " .. (isMobile and "Mobile" or "Desktop"))
+        -- Logged silently; Logger handles console filtering
+        -- (chat.lua loads before Logger, kept as comment for traceability)
     end
 end)
 
@@ -263,7 +264,10 @@ function Chat.Init(config)
     Config = config
     -- Log effective platform after init
     local effective = Chat.IsMobile()
-    print("[BSS Monitor] Chat platform: " .. (effective and "Mobile (forced)" or (isMobile and "Mobile (auto)" or "Desktop")))
+    -- Platform info logged via Logger if available
+    if _G.BSSMonitorLogger then
+        _G.BSSMonitorLogger.Log("Info", "Chat platform: " .. (effective and "Mobile (forced)" or (isMobile and "Mobile (auto)" or "Desktop")))
+    end
     return Chat
 end
 

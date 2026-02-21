@@ -105,7 +105,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
     Monitor.PlayerJoinTimes = State.PlayerJoinTimes
     Monitor.BannedPlayers = State.BannedPlayers
     Monitor.CheckedPlayers = State.CheckedPlayers
-    Monitor.ActionLog = State.ActionLog
+    Monitor.ActionLog = State.GetActionLog()  -- Points to Logger.Buffer
     Monitor.LastScanResults = State.LastScanResults
     Monitor.PendingBans = State.PendingBans
     Monitor.Connections = State.Connections

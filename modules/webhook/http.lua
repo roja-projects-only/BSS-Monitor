@@ -21,7 +21,7 @@ local function httpRequest(options)
     elseif fluxus and fluxus.request then
         return fluxus.request(options)
     else
-        warn("[Webhook] No HTTP method available")
+        -- No HTTP method found; callers handle the nil return
         return nil
     end
 end

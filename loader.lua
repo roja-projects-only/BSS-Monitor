@@ -31,7 +31,7 @@ local CACHE_BUST = "?v=" .. tostring(os.time())
 -- CLEANUP PREVIOUS SESSION (if re-executed)
 -- ============================================
 if _G.BSSMonitor then
-    print("🐝 BSS Monitor: Previous session detected, cleaning up...")
+    -- Silent cleanup of previous session
     
     pcall(function()
         if _G.BSSMonitor.Monitor and _G.BSSMonitor.Monitor.IsRunning then
@@ -72,55 +72,50 @@ if _G.BSSMonitor then
     end)
     
     _G.BSSMonitor = nil
-    print("  ✓ Previous session cleaned up")
+    -- Previous session cleaned up
     task.wait(0.5)
 end
 
 -- Check for custom config
 local customConfig = _G.BSSMonitorConfig
 
-print("═══════════════════════════════════════════")
-print("       🐝 BSS MONITOR - LOADER")
-print("═══════════════════════════════════════════")
-print("")
+print("🐝 BSS Monitor - Loading...")
 
 -- Load modules function
 local function loadModule(name)
     local url = REPO_BASE .. "modules/" .. name .. ".lua" .. CACHE_BUST
-    print("  Loading: " .. name .. " from " .. url)
     
     local httpSuccess, code = pcall(function()
         return game:HttpGet(url)
     end)
     
     if not httpSuccess then
-        warn("  ✗ " .. name .. " (HTTP failed): " .. tostring(code))
+        warn("  ✗ " .. name .. ": HTTP failed")
         return nil
     end
-    
-    print("    Got " .. #code .. " bytes")
     
     local loadSuccess, loadedFunc = pcall(function()
         return loadstring(code, name)
     end)
     
     if not loadSuccess or not loadedFunc then
-        warn("  ✗ " .. name .. " (loadstring failed): " .. tostring(loadedFunc))
+        warn("  ✗ " .. name .. ": loadstring failed")
         return nil
     end
     
     local runSuccess, result = pcall(loadedFunc)
     
     if runSuccess then
-        print("  ✓ " .. name)
+        return result
         return result
     else
-        warn("  ✗ " .. name .. " (runtime error): " .. tostring(result))
+        warn("  ✗ " .. name .. ": " .. tostring(result))
         return nil
     end
 end
 
-print("Loading modules...")
+-- Load Logger first (used by all modules)
+local Logger = loadModule("logger")
 
 -- Load all modules
 local Config = loadModule("config")
@@ -145,34 +140,22 @@ local GUIComponents = loadModule("gui/components")
 local GUI = loadModule("gui/init")
 
 -- Validate critical modules (GUI is optional)
-if not Config or not Scanner or not Monitor or not MonitorState then
+if not Config or not Scanner or not Monitor or not MonitorState or not Logger then
     error("❌ BSS Monitor: Critical module load failed!")
     return
 end
 
--- Helper to mask webhook URL
-local function maskWebhook(url)
-    if not url or url == "" then return "Not set" end
-    return url:sub(1, 40) .. "..."
-end
-
 -- Apply custom config if provided
 if customConfig then
-    print("")
-    print("Applying custom config...")
     for key, value in pairs(customConfig) do
         Config[key] = value
-        if key == "WEBHOOK_URL" then
-            print("  • " .. key .. " = " .. maskWebhook(value))
-        else
-            print("  • " .. key .. " = " .. tostring(value))
-        end
     end
 end
 
-print("")
-
 -- Initialize modules
+Logger.Init(Config)
+_G.BSSMonitorLogger = Logger  -- Expose early for modules that load before full init
+if MonitorState then MonitorState.Init(Logger) end
 if Chat then Chat.Init(Config) end
 if WebhookEmbeds then WebhookEmbeds.Init(WebhookHttp) end
 if Webhook then Webhook.Init(WebhookHttp, WebhookEmbeds) end
@@ -204,6 +187,7 @@ _G.BSSMonitor = {
     GUI = GUI,
     Monitor = Monitor,
     MonitorState = MonitorState,
+    Logger = Logger,
     _connections = {},  -- Store connections for cleanup on re-execution
     
     -- Convenience functions
@@ -222,9 +206,14 @@ _G.BSSMonitor = {
     testChat = function() return Chat.SendTestMessage() end,
     testWebhook = function() return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 }) end,
     
+    -- Logging controls
+    setLogLevel = function(level) Logger.SetLevel(level) end,
+    getLogs = function(count) return Logger.GetRecent(count or 20) end,
+    clearLogs = function() Logger.Clear() end,
+    
     -- Manual cleanup
     cleanup = function()
-        print("🐝 BSS Monitor: Manual cleanup...")
+        -- Silent cleanup
         pcall(function() Monitor.Stop() end)
         pcall(function() if GUI then GUI.ScreenGui:Destroy() end end)
         pcall(function()
@@ -233,19 +222,14 @@ _G.BSSMonitor = {
         pcall(function()
             for _, conn in ipairs(_G.BSSMonitor._connections) do conn:Disconnect() end
         end)
+        -- Cleaned up
         _G.BSSMonitor = nil
-        print("  ✓ Cleaned up")
     end,
     
     -- Version
     version = Config.VERSION or "unknown"
 }
 
-print("═══════════════════════════════════════════")
-print("       🐝 BSS MONITOR READY!")
-print("═══════════════════════════════════════════")
-print(" DRY_RUN: " .. (Config.DRY_RUN and "ON" or "OFF"))
-print(" AUTO_START: " .. (Config.AUTO_START and "ON" or "OFF"))
-print("═══════════════════════════════════════════")
+print("🐝 BSS Monitor v" .. (Config.VERSION or "?") .. " ready | DRY=" .. (Config.DRY_RUN and "ON" or "OFF") .. " LOG=" .. (Config.LOG_LEVEL or "WARN"))
 
 return _G.BSSMonitor
