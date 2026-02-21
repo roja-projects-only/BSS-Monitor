@@ -1,237 +1,175 @@
 --[[
-    BSS Monitor - Webhook Module
-    Handles Discord webhook notifications
+    BSS Monitor - Webhook Embeds
+    All Discord notification embed builders
     https://github.com/roja-projects-only/BSS-Monitor
 ]]
 
-local Webhook = {}
+local Embeds = {}
 
-local HttpService = game:GetService("HttpService")
+-- Dependencies (set by Init)
+local Http
 
--- Helper: Make HTTP request (works with most executors)
-local function httpRequest(options)
-    if request then
-        return request(options)
-    elseif http_request then
-        return http_request(options)
-    elseif syn and syn.request then
-        return syn.request(options)
-    elseif http and http.request then
-        return http.request(options)
-    elseif fluxus and fluxus.request then
-        return fluxus.request(options)
-    else
-        warn("[Webhook] No HTTP method available")
-        return nil
-    end
+function Embeds.Init(http)
+    Http = http
+    return Embeds
 end
 
--- Discord colors
-local COLORS = {
-    RED = 0xED4245,
-    GREEN = 0x57F287,
-    YELLOW = 0xFEE75C,
-    ORANGE = 0xE67E22,
-    BLUE = 0x5865F2,
-    GOLD = 0xF1C40F,
-    DARK = 0x2F3136,
-}
-
--- Send a webhook message
--- content: optional text outside embed (used for @mentions that trigger mobile push notifications)
-function Webhook.Send(config, embeds, content)
-    if not config.WEBHOOK_ENABLED or config.WEBHOOK_URL == "" then
-        return false, "Webhook disabled or URL not set"
-    end
-    
-    -- Support single embed table or array of embeds
-    if embeds.title or embeds.description then
-        embeds = {embeds}
-    end
-    
-    -- Add timestamp + footer to all embeds
-    for _, embed in ipairs(embeds) do
-        embed.timestamp = embed.timestamp or os.date("!%Y-%m-%dT%H:%M:%SZ")
-        if not embed.footer then
-            embed.footer = { text = "BSS Monitor 🐝" }
-        end
-    end
-    
-    local data = { embeds = embeds }
-    if content and content ~= "" then
-        data.content = content
-    end
-    
-    local success, result = pcall(function()
-        return httpRequest({
-            Url = config.WEBHOOK_URL,
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = HttpService:JSONEncode(data)
-        })
-    end)
-    
-    if success then
-        return true, "Webhook sent"
-    else
-        return false, tostring(result)
-    end
+local function C()
+    return Http.COLORS
 end
 
 -- ═══════════════════════════════════════
 -- PLAYER JOIN
 -- ═══════════════════════════════════════
-function Webhook.SendPlayerJoinNotification(config, playerName, playerCount, maxPlayers)
+function Embeds.SendPlayerJoinNotification(config, playerName, playerCount, maxPlayers)
     local embed = {
-        title = "📥  Player Joined",
-        color = COLORS.BLUE,
+        title = "\xF0\x9F\x93\xA5  Player Joined",
+        color = C().BLUE,
         description = string.format("**%s** joined the server.", playerName),
         fields = {
             {
-                name = "👥 Players",
+                name = "\xF0\x9F\x91\xA5 Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
         },
     }
-
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- PLAYER LEAVE (natural leave only, not bans)
 -- ═══════════════════════════════════════
-function Webhook.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers)
+function Embeds.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers)
     local embed = {
-        title = "📤  Player Left",
-        color = COLORS.DARK,
+        title = "\xF0\x9F\x93\xA4  Player Left",
+        color = C().DARK,
         description = string.format("**%s** left the server.", playerName),
         fields = {
             {
-                name = "👥 Players",
+                name = "\xF0\x9F\x91\xA5 Players",
                 value = string.format("`%d / %d`", playerCount, maxPlayers),
                 inline = true
             },
         },
     }
-
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- BAN NOTIFICATION (auto-ban success)
 -- ═══════════════════════════════════════
-function Webhook.SendBanNotification(config, playerName, hiveData, checkResult)
+function Embeds.SendBanNotification(config, playerName, hiveData, checkResult)
     local pct = checkResult.percentAtLevel * 100
     local reqPct = config.REQUIRED_PERCENT * 100
-    
+
     local embed = {
-        title = config.DRY_RUN and "⚠️  DRY RUN — Would Ban" or "🔨  Player Banned",
-        color = config.DRY_RUN and COLORS.YELLOW or COLORS.RED,
+        title = config.DRY_RUN and "\xE2\x9A\xA0\xEF\xB8\x8F  DRY RUN \xE2\x80\x94 Would Ban" or "\xF0\x9F\x94\xA8  Player Banned",
+        color = config.DRY_RUN and C().YELLOW or C().RED,
         description = string.format(
             ">>> **%s** was removed for not meeting requirements.",
             playerName
         ),
         fields = {
             {
-                name = "📊 Hive Stats",
+                name = "\xF0\x9F\x93\x8A Hive Stats",
                 value = string.format(
-                    "```\n🐝 Bees: %d   ⭐ Gifted: %d\n📈 Avg Level: %.1f\n```",
+                    "```\n\xF0\x9F\x90\x9D Bees: %d   \xE2\xAD\x90 Gifted: %d\n\xF0\x9F\x93\x88 Avg Level: %.1f\n```",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = "❌ Requirement",
+                name = "\xE2\x9D\x8C Requirement",
                 value = string.format(
-                    "`%.0f%%` at LVL %d+ — needed `%.0f%%`",
+                    "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
                 ),
                 inline = false
             },
         },
     }
-    
+
     if config.DRY_RUN then
         embed.description = string.format(
-            ">>> **%s** would be banned — DRY RUN active, no action taken.",
+            ">>> **%s** would be banned \xE2\x80\x94 DRY RUN active, no action taken.",
             playerName
         )
     end
-    
-    return Webhook.Send(config, embed)
+
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- MOBILE BAN FALLBACK (VIM failed, need manual ban)
 -- ═══════════════════════════════════════
-function Webhook.SendMobileBanNotification(config, playerName, hiveData, checkResult)
+function Embeds.SendMobileBanNotification(config, playerName, hiveData, checkResult)
     local pct = checkResult.percentAtLevel * 100
     local reqPct = config.REQUIRED_PERCENT * 100
     local command = "/ban " .. playerName
-    
+
     local embed = {
-        title = "🚨  Action Required — Ban Player",
-        color = COLORS.RED,
+        title = "\xF0\x9F\x9A\xA8  Action Required \xE2\x80\x94 Ban Player",
+        color = C().RED,
         description = string.format(
             ">>> Auto-ban failed for **%s**. Use the command below to ban manually.",
             playerName
         ),
         fields = {
             {
-                name = "📱 Mobile — Tap to Copy",
+                name = "\xF0\x9F\x93\xB1 Mobile \xE2\x80\x94 Tap to Copy",
                 value = "`" .. command .. "`",
                 inline = false
             },
             {
-                name = "🖥️ Desktop",
+                name = "\xF0\x9F\x96\xA5\xEF\xB8\x8F Desktop",
                 value = "```\n" .. command .. "\n```",
                 inline = false
             },
             {
-                name = "📊 Hive Stats",
+                name = "\xF0\x9F\x93\x8A Hive Stats",
                 value = string.format(
-                    "`🐝 %d bees` · `⭐ %d gifted` · `📈 Avg LVL %.1f`",
+                    "`\xF0\x9F\x90\x9D %d bees` \xC2\xB7 `\xE2\xAD\x90 %d gifted` \xC2\xB7 `\xF0\x9F\x93\x88 Avg LVL %.1f`",
                     hiveData.totalBees, hiveData.giftedCount, hiveData.avgLevel
                 ),
                 inline = false
             },
             {
-                name = "❌ Requirement",
+                name = "\xE2\x9D\x8C Requirement",
                 value = string.format(
-                    "`%.0f%%` at LVL %d+ — needed `%.0f%%`",
+                    "`%.0f%%` at LVL %d+ \xE2\x80\x94 needed `%.0f%%`",
                     pct, config.MINIMUM_LEVEL, reqPct
                 ),
                 inline = false
             },
         },
     }
-    
+
     if config.DRY_RUN then
-        embed.title = "⚠️  DRY RUN — Would Need Manual Ban"
-        embed.color = COLORS.YELLOW
+        embed.title = "\xE2\x9A\xA0\xEF\xB8\x8F  DRY RUN \xE2\x80\x94 Would Need Manual Ban"
+        embed.color = C().YELLOW
     end
-    
+
     -- @mention outside embed triggers mobile push notification
     local content = nil
     if config.DISCORD_USER_ID and config.DISCORD_USER_ID ~= "" then
         content = "<@" .. config.DISCORD_USER_ID .. ">"
     end
-    
-    return Webhook.Send(config, embed, content)
+
+    return Http.Send(config, embed, content)
 end
 
 -- ═══════════════════════════════════════
 -- MONITOR START
 -- ═══════════════════════════════════════
-function Webhook.SendStartNotification(config)
+function Embeds.SendStartNotification(config)
     local embed = {
-        title = "🟢  Monitor Started",
-        color = COLORS.GREEN,
+        title = "\xF0\x9F\x9F\xA2  Monitor Started",
+        color = C().GREEN,
         description = "BSS Monitor is now watching this server.",
         fields = {
             {
-                name = "⚙️ Settings",
+                name = "\xE2\x9A\x99\xEF\xB8\x8F Settings",
                 value = string.format(
                     "```\nMin Level    : LVL %d\nRequired     : %.0f%%\nInterval     : %ds\nGrace Period : %ds\nDry Run      : %s\nWhitelisted  : %d players\n```",
                     config.MINIMUM_LEVEL,
@@ -245,49 +183,46 @@ function Webhook.SendStartNotification(config)
             },
         },
     }
-    
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- MONITOR STOP
 -- ═══════════════════════════════════════
-function Webhook.SendStopNotification(config)
+function Embeds.SendStopNotification(config)
     local embed = {
-        title = "🔴  Monitor Stopped",
-        color = COLORS.RED,
+        title = "\xF0\x9F\x94\xB4  Monitor Stopped",
+        color = C().RED,
         description = "Server monitoring has been stopped.",
     }
-    
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- PLAYER PASSED CHECK (optional, not called by default)
 -- ═══════════════════════════════════════
-function Webhook.SendPlayerPassedNotification(config, playerName, hiveData, checkResult)
+function Embeds.SendPlayerPassedNotification(config, playerName, hiveData, checkResult)
     local embed = {
-        title = "✅  Player OK",
-        color = COLORS.GREEN,
+        title = "\xE2\x9C\x85  Player OK",
+        color = C().GREEN,
         description = string.format(
-            "**%s** meets hive requirements.\n`%.0f%%` at LVL %d+ · `Avg LVL %.1f`",
+            "**%s** meets hive requirements.\n`%.0f%%` at LVL %d+ \xC2\xB7 `Avg LVL %.1f`",
             playerName,
             checkResult.percentAtLevel * 100,
             config.MINIMUM_LEVEL,
             hiveData.avgLevel
         ),
     }
-    
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- BAN FAILED
 -- ═══════════════════════════════════════
-function Webhook.SendBanFailedNotification(config, playerName, reason, attempts)
+function Embeds.SendBanFailedNotification(config, playerName, reason, attempts)
     local embed = {
-        title = "⚠️  Ban Failed",
-        color = COLORS.ORANGE,
+        title = "\xE2\x9A\xA0\xEF\xB8\x8F  Ban Failed",
+        color = C().ORANGE,
         description = string.format(
             ">>> Could not remove **%s** after **%d** attempt%s.\nPlayer is still in the server.",
             playerName, attempts or 1, (attempts or 1) > 1 and "s" or ""
@@ -305,17 +240,16 @@ function Webhook.SendBanFailedNotification(config, playerName, reason, attempts)
             },
         },
     }
-    
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
 -- ═══════════════════════════════════════
 -- BAN VERIFIED
 -- ═══════════════════════════════════════
-function Webhook.SendBanVerifiedNotification(config, playerName, reason, attempts)
+function Embeds.SendBanVerifiedNotification(config, playerName, reason, attempts)
     local embed = {
-        title = "✅  Ban Confirmed",
-        color = COLORS.GREEN,
+        title = "\xE2\x9C\x85  Ban Confirmed",
+        color = C().GREEN,
         description = string.format(
             "**%s** has left the server.",
             playerName
@@ -333,8 +267,7 @@ function Webhook.SendBanVerifiedNotification(config, playerName, reason, attempt
             },
         },
     }
-    
-    return Webhook.Send(config, embed)
+    return Http.Send(config, embed)
 end
 
-return Webhook
+return Embeds

@@ -121,9 +121,13 @@ print("Loading modules...")
 -- Load all modules
 local Config = loadModule("config")
 local Scanner = loadModule("scanner")
-local Webhook = loadModule("webhook")
 local Chat = loadModule("chat")
 local Monitor = loadModule("monitor")
+
+-- Load Webhook sub-modules (modular webhook/ folder)
+local WebhookHttp = loadModule("webhook/http")
+local WebhookEmbeds = loadModule("webhook/embeds")
+local Webhook = loadModule("webhook/init")
 
 -- Load GUI sub-modules (modular gui/ folder)
 local GUITheme = loadModule("gui/theme")
@@ -161,6 +165,8 @@ print("")
 
 -- Initialize modules
 if Chat then Chat.Init(Config) end
+if WebhookEmbeds then WebhookEmbeds.Init(WebhookHttp) end
+if Webhook then Webhook.Init(WebhookHttp, WebhookEmbeds) end
 if GUIHelpers then GUIHelpers.Init(GUITheme) end
 if GUIComponents then GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat) end
 if GUI then GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents) end
