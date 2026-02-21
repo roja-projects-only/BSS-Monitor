@@ -123,8 +123,13 @@ local Config = loadModule("config")
 local Scanner = loadModule("scanner")
 local Webhook = loadModule("webhook")
 local Chat = loadModule("chat")
-local GUI = loadModule("gui")
 local Monitor = loadModule("monitor")
+
+-- Load GUI sub-modules (modular gui/ folder)
+local GUITheme = loadModule("gui/theme")
+local GUIHelpers = loadModule("gui/helpers")
+local GUIComponents = loadModule("gui/components")
+local GUI = loadModule("gui/init")
 
 -- Validate critical modules (GUI is optional)
 if not Config or not Scanner or not Monitor then
@@ -156,7 +161,9 @@ print("")
 
 -- Initialize modules
 if Chat then Chat.Init(Config) end
-if GUI then GUI.Init(Config, Monitor, Chat) end
+if GUIHelpers then GUIHelpers.Init(GUITheme) end
+if GUIComponents then GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat) end
+if GUI then GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents) end
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI)
 
 -- Create GUI if enabled
