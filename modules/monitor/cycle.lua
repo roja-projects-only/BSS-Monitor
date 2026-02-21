@@ -108,11 +108,7 @@ function Cycle.RunCycle()
                                 dryRun = Config.DRY_RUN
                             }
                             if Webhook then
-                                Webhook.Send(Config, {
-                                    title = "\xE2\x8F\xB0  Scan Timeout \xE2\x80\x94 Player Kicked",
-                                    color = 0xE67E22,
-                                    description = string.format("**%s** was kicked for having no hive data after %d seconds.", playerName, math.floor(elapsed)),
-                                })
+                                Webhook.SendScanTimeoutNotification(Config, playerName, math.floor(elapsed))
                             end
                         end
                     end
@@ -155,13 +151,12 @@ function Cycle.Start()
 
             if GUI then
                 GUI.UpdateDisplay(State.LastScanResults, State.CheckedPlayers, State.BannedPlayers)
-                GUI.UpdateLog()
             end
 
             -- Wait for next cycle
             for i = 1, Config.CHECK_INTERVAL do
                 if not State.IsRunning then break end
-                wait(1)
+                task.wait(1)
             end
         end
     end)()

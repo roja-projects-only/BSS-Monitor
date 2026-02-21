@@ -327,7 +327,6 @@ function GUI.UpdateDisplay(scanResults, checkedPlayers, bannedPlayers)
     GUI.UpdateBannedList(bannedPlayers)
 end
 
-function GUI.UpdateLog() end
 function GUI.Show() pcall(function() if GUI.ScreenGui then GUI.ScreenGui.Enabled = true end end) end
 function GUI.Hide() pcall(function() if GUI.ScreenGui then GUI.ScreenGui.Enabled = false end end) end
 function GUI.Toggle() pcall(function() if GUI.ScreenGui then GUI.ScreenGui.Enabled = not GUI.ScreenGui.Enabled end end) end

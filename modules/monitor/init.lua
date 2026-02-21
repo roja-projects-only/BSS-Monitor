@@ -55,9 +55,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
                 local playerCount = #Players:GetPlayers()
                 Webhook.SendPlayerJoinNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
             end
-            if GUI then
-                GUI.UpdateLog()
-            end
+
         end
     end)
 
@@ -83,11 +81,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         if State.KickedTimeouts[player.Name] then
             State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
             if Webhook then
-                Webhook.Send(Config, {
-                    title = "\xE2\x9C\x85  Kick Confirmed",
-                    color = 0x57F287,
-                    description = string.format("**%s** has left the server (scan timeout).", player.Name),
-                })
+                Webhook.SendKickConfirmedNotification(Config, player.Name)
             end
         end
 

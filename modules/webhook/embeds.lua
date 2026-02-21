@@ -217,6 +217,30 @@ function Embeds.SendPlayerPassedNotification(config, playerName, hiveData, check
 end
 
 -- ═══════════════════════════════════════
+-- SCAN TIMEOUT (player kicked for no hive data)
+-- ═══════════════════════════════════════
+function Embeds.SendScanTimeoutNotification(config, playerName, elapsedSeconds)
+    local embed = {
+        title = "\xE2\x8F\xB0  Scan Timeout \xE2\x80\x94 Player Kicked",
+        color = C().ORANGE,
+        description = string.format("**%s** was kicked for having no hive data after %d seconds.", playerName, elapsedSeconds),
+    }
+    return Http.Send(config, embed)
+end
+
+-- ═══════════════════════════════════════
+-- KICK CONFIRMED (scan timeout player left)
+-- ═══════════════════════════════════════
+function Embeds.SendKickConfirmedNotification(config, playerName)
+    local embed = {
+        title = "\xE2\x9C\x85  Kick Confirmed",
+        color = C().GREEN,
+        description = string.format("**%s** has left the server (scan timeout).", playerName),
+    }
+    return Http.Send(config, embed)
+end
+
+-- ═══════════════════════════════════════
 -- BAN FAILED
 -- ═══════════════════════════════════════
 function Embeds.SendBanFailedNotification(config, playerName, reason, attempts)

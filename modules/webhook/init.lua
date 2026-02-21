@@ -26,6 +26,8 @@ function Webhook.Init(http, embeds)
     Webhook.SendPlayerPassedNotification = Embeds.SendPlayerPassedNotification
     Webhook.SendBanFailedNotification    = Embeds.SendBanFailedNotification
     Webhook.SendBanVerifiedNotification  = Embeds.SendBanVerifiedNotification
+    Webhook.SendScanTimeoutNotification  = Embeds.SendScanTimeoutNotification
+    Webhook.SendKickConfirmedNotification = Embeds.SendKickConfirmedNotification
 
     return Webhook
 end
