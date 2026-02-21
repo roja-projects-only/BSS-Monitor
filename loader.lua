@@ -107,7 +107,6 @@ local function loadModule(name)
     
     if runSuccess then
         return result
-        return result
     else
         warn("  ✗ " .. name .. ": " .. tostring(result))
         return nil
