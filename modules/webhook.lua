@@ -79,6 +79,46 @@ function Webhook.Send(config, embeds, content)
 end
 
 -- ═══════════════════════════════════════
+-- PLAYER JOIN
+-- ═══════════════════════════════════════
+function Webhook.SendPlayerJoinNotification(config, playerName, playerCount, maxPlayers)
+    local embed = {
+        title = "📥  Player Joined",
+        color = COLORS.BLUE,
+        description = string.format("**%s** joined the server.", playerName),
+        fields = {
+            {
+                name = "👥 Players",
+                value = string.format("`%d / %d`", playerCount, maxPlayers),
+                inline = true
+            },
+        },
+    }
+
+    return Webhook.Send(config, embed)
+end
+
+-- ═══════════════════════════════════════
+-- PLAYER LEAVE (natural leave only, not bans)
+-- ═══════════════════════════════════════
+function Webhook.SendPlayerLeaveNotification(config, playerName, playerCount, maxPlayers)
+    local embed = {
+        title = "📤  Player Left",
+        color = COLORS.DARK,
+        description = string.format("**%s** left the server.", playerName),
+        fields = {
+            {
+                name = "👥 Players",
+                value = string.format("`%d / %d`", playerCount, maxPlayers),
+                inline = true
+            },
+        },
+    }
+
+    return Webhook.Send(config, embed)
+end
+
+-- ═══════════════════════════════════════
 -- BAN NOTIFICATION (auto-ban success)
 -- ═══════════════════════════════════════
 function Webhook.SendBanNotification(config, playerName, hiveData, checkResult)

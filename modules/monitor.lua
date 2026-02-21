@@ -52,6 +52,10 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
         if player ~= LocalPlayer then
             Monitor.PlayerJoinTimes[player.Name] = tick()
             Monitor.Log("PlayerJoin", player.Name .. " joined the server")
+            if Webhook then
+                local playerCount = #Players:GetPlayers()
+                Webhook.SendPlayerJoinNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
+            end
             if GUI then
                 GUI.UpdateLog()
             end
@@ -76,9 +80,18 @@ function Monitor.Init(config, scanner, webhook, chat, gui)
             end
         end
         
+        -- Send leave webhook only if player was NOT banned/pending ban
+        local wasBanned = Monitor.BannedPlayers[player.Name] or Monitor.PendingBans[player.Name]
+
         Monitor.PlayerJoinTimes[player.Name] = nil
         Monitor.CheckedPlayers[player.Name] = nil
         Monitor.Log("PlayerLeave", player.Name .. " left the server")
+
+        if not wasBanned and Webhook then
+            local playerCount = #Players:GetPlayers() - 1 -- this player is still counted until event finishes
+            Webhook.SendPlayerLeaveNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
+        end
+
         if GUI then
             GUI.UpdateDisplay(Monitor.LastScanResults, Monitor.CheckedPlayers, Monitor.BannedPlayers)
         end
