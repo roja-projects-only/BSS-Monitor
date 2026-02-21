@@ -508,7 +508,14 @@ function Components.CreatePlayerEntry(playerName, hiveData, checkedData)
             entry.BackgroundColor3 = C.redBg
         end
     else
-        statsLabel.Text = "SCANNING"
+        -- No hive data — show countdown to scan-timeout kick
+        local remaining = 0
+        if Monitor and Monitor.PlayerJoinTimes and Monitor.PlayerJoinTimes[playerName] then
+            local elapsed = tick() - Monitor.PlayerJoinTimes[playerName]
+            local kickAt = (Config and Config.GRACE_PERIOD or 20) + (Config and Config.SCAN_TIMEOUT or 90)
+            remaining = math.max(0, math.ceil(kickAt - elapsed))
+        end
+        statsLabel.Text = string.format("SCANNING (%ds)", remaining)
         statsLabel.TextColor3 = C.blue
         indicator.BackgroundColor3 = C.blue
     end

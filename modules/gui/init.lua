@@ -172,8 +172,15 @@ function GUI.Create()
 
         if Monitor and Monitor.PlayerJoinTimes then
             local gracePeriod = Config and Config.GRACE_PERIOD or 20
+            local scanTimeout = Config and Config.SCAN_TIMEOUT or 90
+            local totalTimeout = gracePeriod + scanTimeout
             for name, joinTime in pairs(Monitor.PlayerJoinTimes) do
-                if tick() - joinTime < gracePeriod + 2 then
+                local elapsed = tick() - joinTime
+                -- Refresh during grace countdown OR scan-timeout countdown (no hive data)
+                if elapsed < gracePeriod + 2 then
+                    GUI.UpdatePlayerList()
+                    break
+                elseif elapsed < totalTimeout + 2 and not (GUI.LastScanResults and GUI.LastScanResults[name]) then
                     GUI.UpdatePlayerList()
                     break
                 end
