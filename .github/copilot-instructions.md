@@ -388,6 +388,29 @@ Tested on:
 - Set `DISCORD_USER_ID` for mobile @mention push notifications
 - Test files in `tests/` folder (gitignored) for isolated testing
 
+### Local Dev Testing (via Cloudflare Tunnel)
+The dev domain `https://dev.raktue.com` is a permanent Cloudflare named tunnel pointing to `http://localhost:8080`. It serves local files directly — no pushing required.
+
+**Start local server** (from project root):
+```powershell
+python -m http.server 8080
+.\cloudflared.exe tunnel run bss-dev
+```
+
+**Executor snippet for local testing:**
+```lua
+_G.BSSMonitorDev = "https://dev.raktue.com/"
+_G.BSSMonitorConfig = {
+    WEBHOOK_URL = "...",
+    DISCORD_USER_ID = "...",
+    DRY_RUN = true,
+    AUTO_START = true,
+}
+loadstring(game:HttpGet("https://dev.raktue.com/loader.lua"))()
+```
+
+`_G.BSSMonitorDev` is read by `loader.lua` and `main.lua` at startup to override `REPO_BASE`, then immediately cleared to `nil`. Nothing in the committed files needs to change between dev and prod.
+
 ## Tests Folder
 `tests/` contains isolated test scripts:
 - `test_mobile_chat.lua` - Test chat methods
