@@ -24,7 +24,8 @@
     
 ]]
 
-local REPO_BASE = "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
+local REPO_BASE = _G.BSSMonitorDev or "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
+_G.BSSMonitorDev = nil  -- clear immediately so no module can read the dev URL
 local CACHE_BUST = "?v=" .. tostring(os.time())
 
 -- ============================================
