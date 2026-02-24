@@ -161,7 +161,10 @@ function Config.ApplyFromTable(tbl)
             elseif v == nil then
                 Config.MOBILE_MODE = nil
             end
-        elseif key == "MINIMUM_LEVEL" or key == "MIN_BEES_REQUIRED" or key == "MAX_PLAYERS" then
+        elseif key == "MINIMUM_LEVEL" then
+            local n = tonumber(v)
+            if n then Config[key] = math.max(1, math.min(23, math.floor(n))) end
+        elseif key == "MIN_BEES_REQUIRED" or key == "MAX_PLAYERS" then
             local n = tonumber(v)
             if n and n >= 0 then Config[key] = math.floor(n) end
         elseif key == "REQUIRED_PERCENT" then
@@ -172,8 +175,13 @@ function Config.ApplyFromTable(tbl)
             if n and n >= 0 then Config[key] = math.floor(n) end
         elseif key == "WEBHOOK_ENABLED" or key == "DRY_RUN" or key == "AUTO_START" or key == "SHOW_GUI" or key == "USE_KICK" then
             if type(v) == "boolean" then Config[key] = v end
-        elseif key == "WEBHOOK_URL" or key == "LOG_LEVEL" or key == "DISCORD_USER_ID" then
+        elseif key == "WEBHOOK_URL" or key == "DISCORD_USER_ID" then
             if type(v) == "string" then Config[key] = v end
+        elseif key == "LOG_LEVEL" then
+            if type(v) == "string" then
+                local valid = { DEBUG = true, INFO = true, WARN = true, ERROR = true, CRITICAL = true, NONE = true }
+                if valid[v] then Config[key] = v end
+            end
         end
     end
     Config.MAX_SLOTS = Config.HIVE_SIZE_X * Config.HIVE_SIZE_Y
