@@ -281,8 +281,12 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
 
     inputRefs[key] = { type = "dropdown", button = btn, value = currentVal, options = options, isKeyed = isKeyed }
     btn.MouseButton1Click:Connect(function()
-        if listParent == dropdownParent then
-            listFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y)
+        if listParent == dropdownParent and dropdownParent then
+            local px = dropdownParent.AbsolutePosition.X
+            local py = dropdownParent.AbsolutePosition.Y
+            local relX = btn.AbsolutePosition.X - px
+            local relY = btn.AbsolutePosition.Y + btn.AbsoluteSize.Y - py
+            listFrame.Position = UDim2.new(0, relX, 0, relY)
         end
         listFrame.Visible = not listFrame.Visible
     end)
