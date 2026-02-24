@@ -153,22 +153,35 @@ if not Config or not Scanner or not Monitor or not MonitorState or not Logger th
     return
 end
 
--- Apply persisted config from BSS-Monitor/config.json (if present)
-if Persist and Persist.HasSavedConfig and Persist.Load then
+-- Apply script config first (defaults + _G.BSSMonitorConfig)
+if customConfig then
+    for key, value in pairs(customConfig) do
+        Config[key] = value
+    end
+end
+
+-- Then apply persisted config from BSS-Monitor/config.json (overrides script config when file exists)
+local hadPersistedConfig = false
+if Persist and Persist.Load then
     local content, loadErr = Persist.Load()
     if content and #content > 0 then
         local HttpService = game:GetService("HttpService")
         local ok, decoded = pcall(function() return HttpService:JSONDecode(content) end)
         if ok and decoded and type(decoded) == "table" and Config.ApplyFromTable then
             Config.ApplyFromTable(decoded)
+            hadPersistedConfig = true
         end
     end
 end
 
--- Apply custom config if provided (overrides persisted)
-if customConfig then
-    for key, value in pairs(customConfig) do
-        Config[key] = value
+-- First run: no config.json → save current config (script/defaults) so next run loads from file
+if not hadPersistedConfig and Persist and Persist.Save and Config.ExportToTable then
+    local HttpService = game:GetService("HttpService")
+    local exportTable = Config.ExportToTable()
+    local jsonStr = HttpService:JSONEncode(exportTable)
+    local ok, err = Persist.Save(jsonStr)
+    if ok then
+        print("[BSS Monitor] First run: config saved to BSS-Monitor/config.json")
     end
 end
 
