@@ -40,6 +40,12 @@ if _G.BSSMonitor then
     end)
     
     pcall(function()
+        -- Destroy config panel first (overlay, dropdowns, refs)
+        if _G.BSSMonitor.ConfigPanel and _G.BSSMonitor.ConfigPanel.Cleanup then
+            _G.BSSMonitor.ConfigPanel.Cleanup()
+        end
+    end)
+    pcall(function()
         -- Destroy GUI and its connections
         if _G.BSSMonitor.GUI then
             if _G.BSSMonitor.GUI.ScreenGui then
@@ -228,8 +234,9 @@ _G.BSSMonitor = {
     
     -- Manual cleanup
     cleanup = function()
-        -- Silent cleanup
+        -- Silent cleanup (safe to re-execute after)
         pcall(function() Monitor.Stop() end)
+        pcall(function() if ConfigPanel and ConfigPanel.Cleanup then ConfigPanel.Cleanup() end end)
         pcall(function() if GUI then GUI.ScreenGui:Destroy() end end)
         pcall(function()
             for _, conn in ipairs(GUI and GUI.Connections or {}) do conn:Disconnect() end
@@ -237,7 +244,6 @@ _G.BSSMonitor = {
         pcall(function()
             for _, conn in ipairs(_G.BSSMonitor._connections) do conn:Disconnect() end
         end)
-        -- Cleaned up
         _G.BSSMonitor = nil
     end,
     

@@ -511,7 +511,8 @@ function ConfigPanel.Create(parent)
     panelFrame = Instance.new("Frame")
     panelFrame.Name = "ConfigPanel"
     panelFrame.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
-    panelFrame.Position = UDim2.new(0.5, -PANEL_WIDTH / 2, 0.5, -PANEL_HEIGHT / 2)
+    panelFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    panelFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     panelFrame.BackgroundColor3 = C.bg
     panelFrame.BorderSizePixel = 0
     panelFrame.ZIndex = 11
@@ -682,6 +683,21 @@ function ConfigPanel.Hide()
     if overlay then
         overlay.Visible = false
     end
+end
+
+--- Destroy config panel UI and clear refs so re-execute or Create() starts clean.
+function ConfigPanel.Cleanup()
+    pcall(function()
+        if overlay and overlay.Parent then
+            overlay:Destroy()
+        end
+    end)
+    overlay = nil
+    panelFrame = nil
+    scroll = nil
+    statusLabel = nil
+    whitelistContainer = nil
+    inputRefs = {}
 end
 
 return ConfigPanel
