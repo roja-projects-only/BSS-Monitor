@@ -108,6 +108,14 @@ function Config.RemoveFromWhitelist(username)
     return false
 end
 
+--- True when notifications are enabled and webhook URL is set (trimmed non-empty).
+--- Use this before sending webhooks or logging Discord-related messages.
+function Config.IsWebhookConfigured()
+    if not Config.WEBHOOK_ENABLED then return false end
+    local url = type(Config.WEBHOOK_URL) == "string" and Config.WEBHOOK_URL:gsub("^%s*(.-)%s*$", "%1") or ""
+    return url ~= ""
+end
+
 -- =============================================
 -- PERSISTENCE (export/apply for config.json)
 -- =============================================
@@ -175,7 +183,10 @@ function Config.ApplyFromTable(tbl)
         elseif key == "WEBHOOK_ENABLED" or key == "DRY_RUN" or key == "SHOW_GUI" or key == "USE_KICK" then
             if type(v) == "boolean" then Config[key] = v end
         elseif key == "WEBHOOK_URL" or key == "DISCORD_USER_ID" then
-            if type(v) == "string" then Config[key] = v end
+            if type(v) == "string" then
+                local trimmed = v:gsub("^%s*(.-)%s*$", "%1")
+                Config[key] = trimmed
+            end
         elseif key == "LOG_LEVEL" then
             if type(v) == "string" then
                 local valid = { DEBUG = true, INFO = true, WARN = true, ERROR = true, CRITICAL = true, NONE = true }

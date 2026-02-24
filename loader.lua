@@ -225,7 +225,13 @@ _G.BSSMonitor = {
     
     -- Test functions
     testChat = function() return Chat.SendTestMessage() end,
-    testWebhook = function() return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 }) end,
+    testWebhook = function()
+        if not Config.IsWebhookConfigured() then
+            print("[BSS Monitor] Webhook not configured. Set Webhook URL and enable Notifications in Settings.")
+            return false, "Not configured"
+        end
+        return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 })
+    end,
     
     -- Logging controls
     setLogLevel = function(level) Logger.SetLevel(level) end,

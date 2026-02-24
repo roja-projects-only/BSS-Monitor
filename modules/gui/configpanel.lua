@@ -194,6 +194,15 @@ end
 local DROPDOWN_LIST_W_PX = 132
 local DROPDOWN_LIST_MAX_H_PX = 124
 
+local function closeAllDropdowns()
+    if not panelFrame then return end
+    for _, d in ipairs(panelFrame:GetDescendants()) do
+        if d.Name == "DropdownList" and d:IsA("Frame") then
+            d.Visible = false
+        end
+    end
+end
+
 local function addDropdownRow(parent, key, labelText, options, currentValue, yOffset, dropdownParent)
     local C = getC()
     local row = Instance.new("Frame")
@@ -281,6 +290,9 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
 
     inputRefs[key] = { type = "dropdown", button = btn, value = currentVal, options = options, isKeyed = isKeyed }
     btn.MouseButton1Click:Connect(function()
+        local wasOpen = listFrame.Visible
+        closeAllDropdowns()
+        if wasOpen then return end
         if listParent == dropdownParent and dropdownParent then
             local px = dropdownParent.AbsolutePosition.X
             local py = dropdownParent.AbsolutePosition.Y
@@ -288,7 +300,7 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
             local relY = btn.AbsolutePosition.Y + btn.AbsoluteSize.Y - py
             listFrame.Position = UDim2.new(0, relX, 0, relY)
         end
-        listFrame.Visible = not listFrame.Visible
+        listFrame.Visible = true
     end)
     return yOffset + ROW_HEIGHT
 end
@@ -462,6 +474,21 @@ local function buildContent(container, dropdownParent)
     return y
 end
 
+local function validateDiscordFields(t)
+    local url = type(t.WEBHOOK_URL) == "string" and t.WEBHOOK_URL:gsub("^%s*(.-)%s*$", "%1") or ""
+    if t.WEBHOOK_ENABLED and url == "" then
+        return "Notifications are on but Webhook URL is empty. Set a URL or turn Notifications off."
+    end
+    if url ~= "" and not url:match("^https?://") then
+        return "Webhook URL should start with https://"
+    end
+    local discordId = type(t.DISCORD_USER_ID) == "string" and t.DISCORD_USER_ID:gsub("^%s*(.-)%s*$", "%1") or ""
+    if discordId ~= "" and not discordId:match("^%d+$") then
+        return "Discord user ID must be numbers only (e.g. 123456789012345678)"
+    end
+    return nil
+end
+
 local function gatherFromUI()
     local t = {}
     for key, ref in pairs(inputRefs) do
@@ -575,6 +602,7 @@ function ConfigPanel.Create(parent)
     scroll.CanvasPosition = Vector2.new(0, 0)
     scroll.ZIndex = 11
     scroll.Parent = panelFrame
+    scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(closeAllDropdowns)
 
     local content = Instance.new("Frame")
     content.Name = "Content"
@@ -619,8 +647,13 @@ function ConfigPanel.Create(parent)
     saveBtn.Parent = footer
     H.addCorner(saveBtn, 6)
     saveBtn.MouseButton1Click:Connect(function()
-        -- Gather from UI into table, apply to Config, then export and persist
         local t = gatherFromUI()
+        local err = validateDiscordFields(t)
+        if err then
+            statusLabel.Text = err
+            statusLabel.TextColor3 = C.red
+            return
+        end
         if Config.ApplyFromTable then
             Config.ApplyFromTable(t)
         end

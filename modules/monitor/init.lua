@@ -60,7 +60,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         if player ~= LocalPlayer then
             State.PlayerJoinTimes[player.Name] = tick()
             State.Log("PlayerJoin", player.Name .. " joined the server")
-            if Webhook then
+            if Webhook and Config.IsWebhookConfigured() then
                 local playerCount = #Players:GetPlayers()
                 Webhook.SendPlayerJoinNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS)
             end
@@ -86,7 +86,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
             and not State.PendingBans[player.Name] then
             State.BannedPlayers[player.Name].verified = true
             State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (ban confirmed)")
-            if Webhook then
+            if Webhook and Config.IsWebhookConfigured() then
                 Webhook.SendBanVerifiedNotification(Config, player.Name, "Player left server", State.BannedPlayers[player.Name].attempts or 0)
             end
         end
@@ -94,7 +94,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         -- Check if this was a scan-timeout kick
         if State.KickedTimeouts[player.Name] then
             State.Log("BanVerified", "✅ " .. player.Name .. " has left the server (kick confirmed - scan timeout)")
-            if Webhook then
+            if Webhook and Config.IsWebhookConfigured() then
                 local kickData = State.KickedTimeouts[player.Name]
                 Webhook.SendKickConfirmedNotification(Config, player.Name, kickData.elapsedSeconds)
             end
@@ -112,7 +112,7 @@ function Monitor.Init(config, scanner, webhook, chat, gui, state, ban, cycle)
         State.NoHiveDataSince[player.Name] = nil
         State.Log("PlayerLeave", player.Name .. " left the server")
 
-        if not wasBanned and Webhook then
+        if not wasBanned and Webhook and Config.IsWebhookConfigured() then
             task.wait(0.1)
             local playerCount = #Players:GetPlayers()
             Webhook.SendPlayerLeaveNotification(Config, player.Name, playerCount, Config.MAX_PLAYERS, playtimeSeconds)

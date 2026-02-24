@@ -55,10 +55,10 @@ function Cycle.RunCycle()
                 -- Player left on their own
                 banData.verified = true
                 State.Log("BanVerified", "✅ " .. playerName .. " has left the server")
-                if Webhook then
+                if Webhook and Config.IsWebhookConfigured() then
                     Webhook.SendBanVerifiedNotification(Config, playerName, "Player left server", 0)
                 end
-            elseif banData.webhookNotified then
+            elseif banData.webhookNotified and Config.IsWebhookConfigured() then
                 -- Player still in server, re-send webhook if enough time has passed
                 local timeSinceNotify = tick() - (banData.lastNotifyTime or banData.time)
                 local renotifyInterval = Config.MOBILE_RENOTIFY_INTERVAL or 300
@@ -141,8 +141,9 @@ function Cycle.Start()
     State.IsRunning = true
     State.Log("Start", "Monitoring started")
 
-    -- Send webhook
-    Webhook.SendStartNotification(Config)
+    if Webhook and Config.IsWebhookConfigured() then
+        Webhook.SendStartNotification(Config)
+    end
 
     -- Update GUI
     if GUI then
@@ -181,8 +182,9 @@ function Cycle.Stop()
     State.IsRunning = false
     State.Log("Stop", "Monitoring stopped")
 
-    -- Send webhook
-    Webhook.SendStopNotification(Config)
+    if Webhook and Config.IsWebhookConfigured() then
+        Webhook.SendStopNotification(Config)
+    end
 
     -- Update GUI
     if GUI then

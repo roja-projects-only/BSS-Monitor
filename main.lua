@@ -125,7 +125,13 @@ _G.BSSMonitor = {
     showGui = function() GUI.Show() end,
     hideGui = function() GUI.Hide() end,
     testChat = function() return Chat.SendTestMessage() end,
-    testWebhook = function() return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 }) end,
+    testWebhook = function()
+        if not Config.IsWebhookConfigured() then
+            print("[BSS Monitor] Webhook not configured. Set Webhook URL and enable Notifications in Settings.")
+            return false, "Not configured"
+        end
+        return Webhook.Send(Config, { title = "🧪 Test", description = "Webhook test successful!", color = 0x57F287 })
+    end,
     
     -- Manual cleanup function
     cleanup = function()

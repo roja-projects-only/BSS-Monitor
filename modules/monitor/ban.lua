@@ -115,27 +115,33 @@ function Ban.ExecuteWithVerification(playerName, reason, maxRetries, timeout)
         end
     end
 
-    -- MOBILE FALLBACK: VIM didn't work, send webhook notification with @mention + tap-to-copy
+    -- MOBILE FALLBACK: VIM didn't work; send webhook only if configured
     if isMobile then
-        State.Log("Mobile", "📱 VIM ban didn't work for " .. playerName .. ", sending webhook notification")
+        local webhookOk = Config.IsWebhookConfigured() and Webhook
+        if webhookOk then
+            State.Log("Mobile", "📱 VIM ban didn't work for " .. playerName .. ", sending webhook notification")
+        else
+            State.Log("Mobile", "📱 VIM ban didn't work for " .. playerName .. " (webhook not configured)")
+        end
 
         State.BannedPlayers[playerName] = {
             time = tick(),
             reason = reason,
             mobileMode = true,
-            webhookNotified = true,
-            lastNotifyTime = tick()
+            webhookNotified = webhookOk,
+            lastNotifyTime = webhookOk and tick() or nil
         }
         State.PendingBans[playerName] = nil
 
-        -- Send mobile webhook with @mention + tap-to-copy /ban command
-        local hiveData = State.LastScanResults[playerName]
-        if hiveData and Webhook then
-            local checkResult = Scanner.CheckRequirements(hiveData, Config)
-            Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+        if webhookOk then
+            local hiveData = State.LastScanResults[playerName]
+            if hiveData then
+                local checkResult = Scanner.CheckRequirements(hiveData, Config)
+                Webhook.SendMobileBanNotification(Config, playerName, hiveData, checkResult)
+            end
         end
 
-        return false, "Mobile fallback (webhook notified)"
+        return false, webhookOk and "Mobile fallback (webhook notified)" or "Mobile fallback (webhook not configured)"
     end
 
     -- DESKTOP: All retries exhausted, player still in server
@@ -151,7 +157,7 @@ function Ban.ExecuteWithVerification(playerName, reason, maxRetries, timeout)
     }
     State.PendingBans[playerName] = nil
 
-    if Webhook then
+    if Webhook and Config.IsWebhookConfigured() then
         Webhook.SendBanFailedNotification(Config, playerName, reason, maxRetries)
     end
 
@@ -243,7 +249,7 @@ function Ban.CheckPlayer(playerName, hiveData)
                         State.BannedPlayers[playerName].pending = nil
                         State.BannedPlayers[playerName].verified = true
                     end
-                    if Webhook then
+                    if Webhook and Config.IsWebhookConfigured() then
                         Webhook.SendBanNotification(Config, playerName, hiveDataRef, checkResultRef)
                     end
                 else
