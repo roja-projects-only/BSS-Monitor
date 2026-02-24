@@ -368,7 +368,7 @@ function Components.CreateFooter(panel, isMobile)
     local dryRun = Config and Config.DRY_RUN
     local modeText = dryRun and "DRY RUN" or (isMobile and "MOBILE" or "DESKTOP")
     local modeColor = dryRun and C.orange or C.textDim
-    H.label({
+    local modeLabel = H.label({
         text = modeText,
         color = modeColor,
         size = 9,
@@ -377,7 +377,7 @@ function Components.CreateFooter(panel, isMobile)
         pos = UDim2.new(0, PADDING, 0, 0),
         parent = footer,
     })
-    H.label({
+    local versionLabel = H.label({
         text = "v" .. (Config and Config.VERSION or "?.?.?"),
         color = C.textDim,
         size = 9,
@@ -388,7 +388,7 @@ function Components.CreateFooter(panel, isMobile)
         parent = footer,
     })
 
-    return footer
+    return footer, modeLabel, versionLabel
 end
 
 -- ============================================

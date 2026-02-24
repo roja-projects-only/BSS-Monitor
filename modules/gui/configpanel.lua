@@ -456,6 +456,14 @@ function ConfigPanel.Create(parent)
         if ok and err == true then
             statusLabel.Text = "Saved to BSS-Monitor/config.json"
             statusLabel.TextColor3 = C.green
+            -- Dynamically update main panel and re-run one cycle with new settings
+            local bss = _G.BSSMonitor
+            if bss and bss.GUI and bss.GUI.RefreshFromConfig then
+                bss.GUI.RefreshFromConfig()
+            end
+            if bss and bss.Monitor and bss.Monitor.RunCycle then
+                bss.Monitor.RunCycle()
+            end
         else
             statusLabel.Text = "Config not saved — file access not available"
             statusLabel.TextColor3 = C.red

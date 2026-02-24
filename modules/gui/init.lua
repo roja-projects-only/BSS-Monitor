@@ -17,6 +17,8 @@ GUI.BannedList = nil
 GUI.MainFrame = nil
 GUI.Content = nil
 GUI.Footer = nil
+GUI.FooterModeLabel = nil
+GUI.FooterVersionLabel = nil
 GUI.ToggleButton = nil
 GUI.ToggleIcon = nil
 GUI.CollapseButton = nil
@@ -149,7 +151,10 @@ function GUI.Create()
     GUI.BannedList = Comp.CreateBannedListSection(content, bannedY)
 
     -- Footer
-    GUI.Footer = Comp.CreateFooter(panel, statsParts.isMobile)
+    local footerFrame, footerModeLabel, footerVersionLabel = Comp.CreateFooter(panel, statsParts.isMobile)
+    GUI.Footer = footerFrame
+    GUI.FooterModeLabel = footerModeLabel
+    GUI.FooterVersionLabel = footerVersionLabel
 
     GUI.ScreenGui = screenGui
 
@@ -348,6 +353,32 @@ function GUI.UpdateDisplay(scanResults, checkedPlayers, bannedPlayers)
     GUI.CheckedPlayers = checkedPlayers or {}
     GUI.UpdatePlayerList()
     GUI.UpdateBannedList(bannedPlayers)
+end
+
+--- Refresh footer mode/version from Config (e.g. after config save). Uses Chat.IsMobile() for platform.
+function GUI.RefreshFooter()
+    pcall(function()
+        if not GUI.FooterModeLabel or not GUI.FooterVersionLabel then return end
+        local isMobile = (Chat and Chat.IsMobile and Chat.IsMobile()) or false
+        local dryRun = Config and Config.DRY_RUN
+        local modeText = dryRun and "DRY RUN" or (isMobile and "MOBILE" or "DESKTOP")
+        local modeColor = dryRun and Theme.C.orange or Theme.C.textDim
+        GUI.FooterModeLabel.Text = modeText
+        GUI.FooterModeLabel.TextColor3 = modeColor
+        GUI.FooterVersionLabel.Text = "v" .. (Config and Config.VERSION or "?.?.?")
+    end)
+end
+
+--- Refresh main panel from current Config and state (call after config save for dynamic updates).
+function GUI.RefreshFromConfig()
+    pcall(function()
+        GUI.RefreshFooter()
+        GUI.UpdatePlayerCount()
+        GUI.UpdatePlayerList()
+        local state = _G.BSSMonitor and _G.BSSMonitor.MonitorState
+        local banned = (state and state.BannedPlayers) or {}
+        GUI.UpdateBannedList(banned)
+    end)
 end
 
 function GUI.Show() pcall(function() if GUI.ScreenGui then GUI.ScreenGui.Enabled = true end end) end
