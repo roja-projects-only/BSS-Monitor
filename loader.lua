@@ -25,7 +25,8 @@
 
 local REPO_BASE = _G.BSSMonitorDev or "https://raw.githubusercontent.com/roja-projects-only/BSS-Monitor/main/"
 _G.BSSMonitorDev = nil  -- clear immediately so no module can read the dev URL
-local CACHE_BUST = "?v=" .. tostring(os.time())
+-- Dev/local URLs get cache bust so changes apply; production reuses cache for faster reloads
+local CACHE_BUST = (REPO_BASE:find("dev") or REPO_BASE:find("localhost") or _G.BSSMonitorNoCache) and ("?v=" .. tostring(os.time())) or ""
 
 -- ============================================
 -- CLEANUP PREVIOUS SESSION (if re-executed)
@@ -88,59 +89,39 @@ local customConfig = _G.BSSMonitorConfig
 local loadStart = tick()
 print("🐝 BSS Monitor - Loading...")
 
--- Load modules function
 local function loadModule(name)
     local url = REPO_BASE .. "modules/" .. name .. ".lua" .. CACHE_BUST
-    
-    local httpSuccess, code = pcall(function()
-        return game:HttpGet(url)
-    end)
-    
-    if not httpSuccess then
+    local httpOk, code = pcall(function() return game:HttpGet(url) end)
+    if not httpOk or not code then
         warn("  ✗ " .. name .. ": HTTP failed")
         return nil
     end
-    
-    local loadSuccess, loadedFunc = pcall(function()
-        return loadstring(code, name)
-    end)
-    
-    if not loadSuccess or not loadedFunc then
+    local loadOk, fn = pcall(loadstring, code, name)
+    if not loadOk or not fn then
         warn("  ✗ " .. name .. ": loadstring failed")
         return nil
     end
-    
-    local runSuccess, result = pcall(loadedFunc)
-    
-    if runSuccess then
-        return result
-    else
-        warn("  ✗ " .. name .. ": " .. tostring(result))
-        return nil
-    end
+    local runOk, result = pcall(fn)
+    if runOk then return result end
+    warn("  ✗ " .. name .. ": " .. tostring(result))
+    return nil
 end
 
--- Load Logger first (used by all modules)
 local Logger = loadModule("logger")
-
--- Load all modules
 local Config = loadModule("config")
 local Persist = loadModule("persist")
 local Scanner = loadModule("scanner")
 local Chat = loadModule("chat")
 
--- Load Monitor sub-modules (modular monitor/ folder)
 local MonitorState = loadModule("monitor/state")
 local MonitorBan = loadModule("monitor/ban")
 local MonitorCycle = loadModule("monitor/cycle")
 local Monitor = loadModule("monitor/init")
 
--- Load Webhook sub-modules (modular webhook/ folder)
 local WebhookHttp = loadModule("webhook/http")
 local WebhookEmbeds = loadModule("webhook/embeds")
 local Webhook = loadModule("webhook/init")
 
--- Load GUI sub-modules (modular gui/ folder)
 local GUITheme = loadModule("gui/theme")
 local GUIHelpers = loadModule("gui/helpers")
 local GUIComponents = loadModule("gui/components")
