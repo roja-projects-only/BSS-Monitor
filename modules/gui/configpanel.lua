@@ -120,6 +120,7 @@ local function addTextRow(parent, key, labelText, value, yOffset)
     row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
     row.Position = UDim2.new(0, 0, 0, yOffset)
     row.BackgroundTransparency = 1
+    row.ClipsDescendants = true
     row.Parent = parent
 
     H.label({
@@ -138,13 +139,20 @@ local function addTextRow(parent, key, labelText, value, yOffset)
     box.Position = UDim2.new(INPUT_LEFT, 0, 0, INPUT_TOP)
     box.BackgroundColor3 = C.surface
     box.BorderSizePixel = 0
-    box.Text = tostring(value or "")
+    box.Text = (tostring(value or ""):gsub("^%s*(.-)%s*$", "%1"))
     box.TextColor3 = C.text
     box.TextSize = 10
     box.Font = Enum.Font.Gotham
     box.ClearTextOnFocus = false
+    if box.TextTruncate then
+        box.TextTruncate = Enum.TextTruncate.AtEnd
+    end
     box.Parent = row
     H.addCorner(box, 4)
+    box.FocusLost:Connect(function()
+        local trimmed = (box.Text or ""):gsub("^%s*(.-)%s*$", "%1")
+        if trimmed ~= box.Text then box.Text = trimmed end
+    end)
 
     inputRefs[key] = { type = "text", box = box }
     return yOffset + ROW_HEIGHT

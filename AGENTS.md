@@ -452,7 +452,7 @@ Tested on:
 - Should work on Synapse, Fluxus, etc.
 
 ## Workflow Rules
-- **Always commit after each task is completed.** When you finish a task (bug fix, feature, refactor, etc.), stage and commit the changes immediately before moving on to the next task. Use clear, descriptive commit messages summarizing what was done.
+- **Always commit after each task.** You must stage and commit as soon as a task is done (bug fix, feature, refactor, docs, etc.). Do not leave uncommitted work or move on to the next task without committing. Use clear, descriptive commit messages.
 - **Use conventional commit prefixes** for automatic semantic versioning:
   - `fix:` → patch bump (1.0.0 → 1.0.1)
   - `feat:` → minor bump (1.0.0 → 1.1.0)
