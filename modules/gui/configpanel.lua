@@ -191,14 +191,16 @@ local function addToggleRow(parent, key, labelText, value, yOffset)
     return yOffset + ROW_HEIGHT
 end
 
-local function addDropdownRow(parent, key, labelText, options, currentValue, yOffset)
+local DROPDOWN_LIST_W_PX = 132
+local DROPDOWN_LIST_MAX_H_PX = 124
+
+local function addDropdownRow(parent, key, labelText, options, currentValue, yOffset, dropdownParent)
     local C = getC()
     local row = Instance.new("Frame")
     row.Name = key
     row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
     row.Position = UDim2.new(0, 0, 0, yOffset)
     row.BackgroundTransparency = 1
-    row.ClipsDescendants = false
     row.Parent = parent
 
     H.label({
@@ -237,15 +239,16 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
     btn.Parent = row
     H.addCorner(btn, 4)
 
+    local listParent = (dropdownParent and dropdownParent ~= parent) and dropdownParent or row
     local listFrame = Instance.new("Frame")
     listFrame.Name = "DropdownList"
-    listFrame.Size = UDim2.new(INPUT_W, -4, 0, math.min(#options * 22, 120))
-    listFrame.Position = UDim2.new(INPUT_LEFT, 0, 0, ROW_HEIGHT)
+    listFrame.Size = UDim2.new(0, DROPDOWN_LIST_W_PX, 0, math.min(#options * 22, DROPDOWN_LIST_MAX_H_PX))
+    listFrame.Position = listParent == row and UDim2.new(INPUT_LEFT, 0, 0, ROW_HEIGHT) or UDim2.new(0, 0, 0, 0)
     listFrame.BackgroundColor3 = C.surfaceHL
     listFrame.BorderSizePixel = 0
     listFrame.Visible = false
-    listFrame.ZIndex = 20
-    listFrame.Parent = row
+    listFrame.ZIndex = 50
+    listFrame.Parent = listParent
     H.addCorner(listFrame, 4)
 
     local listLayout = Instance.new("UIListLayout")
@@ -266,7 +269,7 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
         optBtn.TextSize = 9
         optBtn.Font = Enum.Font.Gotham
         optBtn.LayoutOrder = i
-        optBtn.ZIndex = 21
+        optBtn.ZIndex = 51
         optBtn.Parent = listFrame
         H.addCorner(optBtn, 2)
         optBtn.MouseButton1Click:Connect(function()
@@ -278,12 +281,72 @@ local function addDropdownRow(parent, key, labelText, options, currentValue, yOf
 
     inputRefs[key] = { type = "dropdown", button = btn, value = currentVal, options = options, isKeyed = isKeyed }
     btn.MouseButton1Click:Connect(function()
+        if listParent == dropdownParent then
+            listFrame.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y)
+        end
         listFrame.Visible = not listFrame.Visible
     end)
     return yOffset + ROW_HEIGHT
 end
 
-local function buildContent(container)
+local function updateContentHeight(container, scroll)
+    local maxY = 0
+    for _, child in ipairs(container:GetChildren()) do
+        local h = child.Size.Y.Offset or 0
+        local bottom = child.Position.Y.Offset + h
+        if bottom > maxY then maxY = bottom end
+    end
+    container.Size = UDim2.new(1, 0, 0, maxY + 20)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, maxY + 20)
+end
+
+local function buildWhitelistRows(container, whitelistContainer, whitelistStartY, addRowFrame, scroll)
+    local C = getC()
+    for _, c in ipairs(whitelistContainer:GetChildren()) do
+        c:Destroy()
+    end
+    local wl = Config.WHITELIST or {}
+    for i, name in ipairs(wl) do
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 22)
+        row.Position = UDim2.new(0, 0, 0, (i - 1) * 24)
+        row.BackgroundColor3 = C.surface
+        row.BorderSizePixel = 0
+        H.addCorner(row, 4)
+        row.Parent = whitelistContainer
+
+        H.label({
+            text = name,
+            color = C.text,
+            size = 10,
+            font = Enum.Font.GothamMedium,
+            sizeUDim = UDim2.new(1, -50, 1, 0),
+            pos = UDim2.new(0, 6, 0, 0),
+            parent = row,
+        })
+
+        local removeBtn = Instance.new("TextButton")
+        removeBtn.Size = UDim2.new(0, 40, 0, 18)
+        removeBtn.Position = UDim2.new(1, -44, 0.5, -9)
+        removeBtn.BackgroundColor3 = C.red
+        removeBtn.BorderSizePixel = 0
+        removeBtn.Text = "Remove"
+        removeBtn.TextColor3 = C.text
+        removeBtn.TextSize = 9
+        removeBtn.Font = Enum.Font.GothamBold
+        removeBtn.Parent = row
+        H.addCorner(removeBtn, 4)
+        removeBtn.MouseButton1Click:Connect(function()
+            Config.RemoveFromWhitelist(name)
+            buildWhitelistRows(container, whitelistContainer, whitelistStartY, addRowFrame, scroll)
+        end)
+    end
+    whitelistContainer.Size = UDim2.new(1, 0, 0, #wl * 24)
+    addRowFrame.Position = UDim2.new(0, 0, 0, whitelistStartY + #wl * 24)
+    updateContentHeight(container, scroll)
+end
+
+local function buildContent(container, dropdownParent)
     local C = getC()
     local PADDING = Theme.PADDING
     inputRefs = {}
@@ -318,7 +381,6 @@ local function buildContent(container)
     -- Behavior
     y = addSectionHeader(container, "BEHAVIOR", y)
     y = addToggleRow(container, "DRY_RUN", "Dry run (no ban)", Config.DRY_RUN, y)
-    y = addToggleRow(container, "AUTO_START", "Auto-start monitor", Config.AUTO_START, y)
     y = addToggleRow(container, "USE_KICK", "Use /kick (not /ban)", Config.USE_KICK, y)
     y = addNumberRow(container, "MAX_PLAYERS", "Max players (1–6)", Config.MAX_PLAYERS, y)
     y = y + 4
@@ -333,47 +395,15 @@ local function buildContent(container)
     whitelistContainer.BackgroundTransparency = 1
     whitelistContainer.Parent = container
 
-    for i, name in ipairs(Config.WHITELIST or {}) do
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 22)
-        row.Position = UDim2.new(0, 0, 0, (i - 1) * 24)
-        row.BackgroundColor3 = C.surface
-        row.BorderSizePixel = 0
-        H.addCorner(row, 4)
-        row.Parent = whitelistContainer
-
-        H.label({
-            text = name,
-            color = C.text,
-            size = 10,
-            font = Enum.Font.GothamMedium,
-            sizeUDim = UDim2.new(1, -50, 1, 0),
-            pos = UDim2.new(0, 6, 0, 0),
-            parent = row,
-        })
-
-        local removeBtn = Instance.new("TextButton")
-        removeBtn.Size = UDim2.new(0, 40, 0, 18)
-        removeBtn.Position = UDim2.new(1, -44, 0.5, -9)
-        removeBtn.BackgroundColor3 = C.red
-        removeBtn.BorderSizePixel = 0
-        removeBtn.Text = "Remove"
-        removeBtn.TextColor3 = C.text
-        removeBtn.TextSize = 9
-        removeBtn.Font = Enum.Font.GothamBold
-        removeBtn.Parent = row
-        H.addCorner(removeBtn, 4)
-        removeBtn.MouseButton1Click:Connect(function()
-            Config.RemoveFromWhitelist(name)
-            row:Destroy()
-        end)
-    end
-
     local addRowFrame = Instance.new("Frame")
+    addRowFrame.Name = "WhitelistAddRow"
     addRowFrame.Size = UDim2.new(1, 0, 0, 28)
     addRowFrame.Position = UDim2.new(0, 0, 0, y + wlCount * 24)
     addRowFrame.BackgroundTransparency = 1
     addRowFrame.Parent = container
+
+    local scroll = container.Parent
+    buildWhitelistRows(container, whitelistContainer, y, addRowFrame, scroll)
 
     local addBox = Instance.new("TextBox")
     addBox.Name = "AddName"
@@ -405,8 +435,7 @@ local function buildContent(container)
         local name = addBox.Text and addBox.Text:gsub("^%s*(.-)%s*$", "%1") or ""
         if #name > 0 and Config.AddToWhitelist(name) then
             addBox.Text = ""
-            -- Rebuild whitelist section so new name appears (or add row dynamically)
-            buildContent(container)
+            buildWhitelistRows(container, whitelistContainer, y, addRowFrame, scroll)
         end
     end)
 
@@ -419,12 +448,12 @@ local function buildContent(container)
     if not table.find(LOG_LEVEL_OPTIONS, logLevel) then
         logLevel = "WARN"
     end
-    y = addDropdownRow(container, "LOG_LEVEL", "Log level", LOG_LEVEL_OPTIONS, logLevel, y)
+    y = addDropdownRow(container, "LOG_LEVEL", "Log level", LOG_LEVEL_OPTIONS, logLevel, y, dropdownParent)
     y = addNumberRow(container, "MOBILE_RENOTIFY_INTERVAL", "Mobile re-notify (s)", Config.MOBILE_RENOTIFY_INTERVAL, y)
     local mobileModeOptions = { { display = "Auto", value = nil }, { display = "Mobile", value = true }, { display = "Desktop", value = false } }
     local modeVal = Config.MOBILE_MODE
     local modeDisplay = modeVal == nil and "Auto" or (modeVal and "Mobile" or "Desktop")
-    y = addDropdownRow(container, "MOBILE_MODE", "Mobile mode", mobileModeOptions, modeDisplay, y)
+    y = addDropdownRow(container, "MOBILE_MODE", "Mobile mode", mobileModeOptions, modeDisplay, y, dropdownParent)
 
     return y
 end
@@ -549,7 +578,7 @@ function ConfigPanel.Create(parent)
     content.BackgroundTransparency = 1
     content.Parent = scroll
 
-    local contentHeight = buildContent(content)
+    local contentHeight = buildContent(content, panelFrame)
     content.Size = UDim2.new(1, 0, 0, contentHeight + 20)
     scroll.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 20)
 
@@ -631,9 +660,9 @@ function ConfigPanel.Show(parent)
     if not parent then return end
     ConfigPanel.Create(parent)
     -- Refresh content from Config
-    if scroll and scroll:FindFirstChild("Content") then
+    if scroll and scroll:FindFirstChild("Content") and panelFrame then
         local content = scroll.Content
-        local contentHeight = buildContent(content)
+        local contentHeight = buildContent(content, panelFrame)
         content.Size = UDim2.new(1, 0, 0, contentHeight + 20)
         scroll.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 20)
     end

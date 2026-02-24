@@ -101,10 +101,7 @@ GUI.Create()
 -- Initial scan
 Monitor.RunCycle()
 
--- Auto-start if configured
-if Config.AUTO_START then
-    Monitor.Start()
-end
+Monitor.Start()
 
 -- Store in _G for access
 _G.BSSMonitor = {

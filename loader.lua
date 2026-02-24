@@ -16,7 +16,6 @@
     _G.BSSMonitorConfig = {
         WEBHOOK_URL = "YOUR_DISCORD_WEBHOOK_URL",
         DRY_RUN = false,  -- Set to false to actually ban
-        AUTO_START = true,
         MINIMUM_LEVEL = 17,
         REQUIRED_PERCENT = 0.80,
     }
@@ -189,10 +188,8 @@ end
 task.wait(1)
 Monitor.RunCycle()
 
--- Auto-start if configured
-if Config.AUTO_START then
-    Monitor.Start()
-end
+-- Always start monitoring on load
+Monitor.Start()
 
 -- Store in _G for access
 _G.BSSMonitor = {

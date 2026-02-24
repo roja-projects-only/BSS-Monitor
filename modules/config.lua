@@ -51,7 +51,6 @@ Config.WEBHOOK_URL = ""             -- Set your Discord webhook URL here
 -- BEHAVIOR SETTINGS
 -- =============================================
 Config.DRY_RUN = false               -- If true, logs but doesn't actually ban (for testing)
-Config.AUTO_START = true            -- If true, starts monitoring immediately on load
 Config.SHOW_GUI = true             -- If false, runs without GUI (headless mode)
 Config.USE_KICK = true              -- If true, uses /kick instead of /ban (some servers only support kick)
 
@@ -118,7 +117,7 @@ Config.PERSIST_KEYS = {
     "CHECK_INTERVAL", "GRACE_PERIOD", "SCAN_TIMEOUT", "BAN_COOLDOWN",
     "MAX_PLAYERS", "WHITELIST",
     "WEBHOOK_ENABLED", "WEBHOOK_URL",
-    "DRY_RUN", "AUTO_START", "SHOW_GUI", "USE_KICK",
+    "DRY_RUN", "SHOW_GUI", "USE_KICK",
     "MOBILE_MODE", "LOG_LEVEL",
     "DISCORD_USER_ID", "MOBILE_RENOTIFY_INTERVAL",
 }
@@ -173,7 +172,7 @@ function Config.ApplyFromTable(tbl)
         elseif key == "CHECK_INTERVAL" or key == "GRACE_PERIOD" or key == "SCAN_TIMEOUT" or key == "BAN_COOLDOWN" or key == "MOBILE_RENOTIFY_INTERVAL" then
             local n = tonumber(v)
             if n and n >= 0 then Config[key] = math.floor(n) end
-        elseif key == "WEBHOOK_ENABLED" or key == "DRY_RUN" or key == "AUTO_START" or key == "SHOW_GUI" or key == "USE_KICK" then
+        elseif key == "WEBHOOK_ENABLED" or key == "DRY_RUN" or key == "SHOW_GUI" or key == "USE_KICK" then
             if type(v) == "boolean" then Config[key] = v end
         elseif key == "WEBHOOK_URL" or key == "DISCORD_USER_ID" then
             if type(v) == "string" then Config[key] = v end
