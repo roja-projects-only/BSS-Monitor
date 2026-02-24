@@ -80,6 +80,7 @@ end
 -- Check for custom config
 local customConfig = _G.BSSMonitorConfig
 
+local loadStart = tick()
 print("🐝 BSS Monitor - Loading...")
 
 -- Load modules function
@@ -247,6 +248,7 @@ _G.BSSMonitor = {
     version = Config.VERSION or "unknown"
 }
 
-print("🐝 BSS Monitor v" .. (Config.VERSION or "?") .. " ready | DRY=" .. (Config.DRY_RUN and "ON" or "OFF") .. " LOG=" .. (Config.LOG_LEVEL or "WARN"))
+local loadTime = string.format("%.2f", tick() - loadStart)
+print("🐝 BSS Monitor v" .. (Config.VERSION or "?") .. " ready in " .. loadTime .. "s | DRY=" .. (Config.DRY_RUN and "ON" or "OFF") .. " LOG=" .. (Config.LOG_LEVEL or "WARN"))
 
 return _G.BSSMonitor

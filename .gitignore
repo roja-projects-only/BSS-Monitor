@@ -3,3 +3,4 @@ tests/
 icons/
 *.pem
 cloudflared.exe
+dev/

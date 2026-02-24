@@ -13,7 +13,7 @@ A modular Roblox Lua script for **Bee Swarm Simulator** private server monitorin
 ```
 modules/
 ├── config.lua          # Configuration, whitelist, mobile & Discord notification settings; ExportToTable/ApplyFromTable for persistence
-├── persist.lua         # Config persistence: BSS-Monitor/config.json via executor file API fallback (syn/fluxus/global)
+├── persist.lua         # Config persistence: BSS-Monitor/config.json via global writefile/readfile/makefolder/isfile
 ├── logger.lua          # Centralized logging with level-based console filtering & in-memory buffer
 ├── scanner.lua         # Hive scanning, bee level/gifted detection, requirement checking
 ├── chat.lua            # Chat command sender (VirtualInputManager), command queue with 1s delay
@@ -106,7 +106,7 @@ _G.BSSMonitor.Config, .Persist, .ConfigPanel, .Scanner, .Webhook, .Chat, .GUI, .
 - **Path:** `BSS-Monitor/config.json` (folder `BSS-Monitor` created when possible).
 - **On load:** Loader reads persisted config (if present), `HttpService:JSONDecode`, then `Config.ApplyFromTable(decoded)` before applying `_G.BSSMonitorConfig`.
 - **On save:** Config GUI Save button calls `Config.ExportToTable()`, `HttpService:JSONEncode`, then `Persist.Save(json)`. If executor has no file APIs, status shows "Config not saved — file access not available".
-- **Persist module:** Fallback chain `syn.*`, `fluxus.*`, global `writefile`/`readfile`/`makefolder`/`isfile`; all behind pcall. No server/DataStore APIs.
+- **Persist module:** Uses global `writefile`/`readfile`/`makefolder`/`isfile` (executor-provided); all behind pcall. No server/DataStore APIs.
 
 ### Data Flow
 ```

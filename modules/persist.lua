@@ -1,7 +1,7 @@
 --[[
     BSS Monitor - Persistence Module
-    Saves/loads config to BSS-Monitor/config.json using executor file APIs.
-    Fallback chain: syn.*, fluxus.*, global writefile/readfile/makefolder.
+    Saves/loads config to BSS-Monitor/config.json using executor global file APIs.
+    Uses global makefolder, writefile, readfile, isfile (no executor-specific namespaces).
     https://github.com/roja-projects-only/BSS-Monitor
 ]]
 
@@ -11,56 +11,36 @@ local FOLDER = "BSS-Monitor"
 local CONFIG_FILE = "BSS-Monitor/config.json"
 
 -- ============================================
--- Executor file API fallback chain
+-- Global file API (executor-provided)
 -- ============================================
 local function doMakefolder(name)
-    if syn and syn.makefolder then
-        return pcall(syn.makefolder, name)
-    end
-    if fluxus and fluxus.makefolder then
-        return pcall(fluxus.makefolder, name)
-    end
-    if _G.makefolder and type(_G.makefolder) == "function" then
-        return pcall(_G.makefolder, name)
+    local fn = makefolder or _G.makefolder
+    if type(fn) == "function" then
+        return pcall(fn, name)
     end
     return false, "makefolder not available"
 end
 
 local function doWritefile(path, content)
-    if syn and syn.writefile then
-        return pcall(syn.writefile, path, content)
-    end
-    if fluxus and fluxus.writefile then
-        return pcall(fluxus.writefile, path, content)
-    end
-    if _G.writefile and type(_G.writefile) == "function" then
-        return pcall(_G.writefile, path, content)
+    local fn = writefile or _G.writefile
+    if type(fn) == "function" then
+        return pcall(fn, path, content)
     end
     return false, "writefile not available"
 end
 
 local function doReadfile(path)
-    if syn and syn.readfile then
-        return pcall(syn.readfile, path)
-    end
-    if fluxus and fluxus.readfile then
-        return pcall(fluxus.readfile, path)
-    end
-    if _G.readfile and type(_G.readfile) == "function" then
-        return pcall(_G.readfile, path)
+    local fn = readfile or _G.readfile
+    if type(fn) == "function" then
+        return pcall(fn, path)
     end
     return false, "readfile not available"
 end
 
 local function doIsfile(path)
-    if syn and syn.isfile then
-        return pcall(syn.isfile, path)
-    end
-    if fluxus and fluxus.isfile then
-        return pcall(fluxus.isfile, path)
-    end
-    if _G.isfile and type(_G.isfile) == "function" then
-        return pcall(_G.isfile, path)
+    local fn = isfile or _G.isfile
+    if type(fn) == "function" then
+        return pcall(fn, path)
     end
     return false, false
 end
