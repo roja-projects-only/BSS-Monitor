@@ -395,11 +395,38 @@ local function buildContent(container, dropdownParent)
     y = addNumberRow(container, "BAN_COOLDOWN", "Ban cooldown (s)", Config.BAN_COOLDOWN, y)
     y = y + 4
 
-    -- Discord
+    -- Discord (URL and ID editable only when Notifications is on)
     y = addSectionHeader(container, "DISCORD", y)
     y = addToggleRow(container, "WEBHOOK_ENABLED", "Notifications", Config.WEBHOOK_ENABLED, y)
     y = addTextRow(container, "WEBHOOK_URL", "Webhook URL", Config.WEBHOOK_URL or "", y)
     y = addTextRow(container, "DISCORD_USER_ID", "Discord user ID (@mention)", Config.DISCORD_USER_ID or "", y)
+    do
+        local enabled = Config.WEBHOOK_ENABLED
+        local urlRef = inputRefs["WEBHOOK_URL"]
+        local idRef = inputRefs["DISCORD_USER_ID"]
+        if urlRef and urlRef.box then
+            urlRef.box.TextEditable = enabled
+            urlRef.box.TextColor3 = enabled and C.text or C.textDim
+        end
+        if idRef and idRef.box then
+            idRef.box.TextEditable = enabled
+            idRef.box.TextColor3 = enabled and C.text or C.textDim
+        end
+        local toggleRef = inputRefs["WEBHOOK_ENABLED"]
+        if toggleRef and toggleRef.button then
+            toggleRef.button.MouseButton1Click:Connect(function()
+                local on = inputRefs["WEBHOOK_ENABLED"].value
+                if urlRef and urlRef.box then
+                    urlRef.box.TextEditable = on
+                    urlRef.box.TextColor3 = on and C.text or C.textDim
+                end
+                if idRef and idRef.box then
+                    idRef.box.TextEditable = on
+                    idRef.box.TextColor3 = on and C.text or C.textDim
+                end
+            end)
+        end
+    end
     y = y + 4
 
     -- Behavior
@@ -545,6 +572,7 @@ function ConfigPanel.Create(parent)
     overlay.BorderSizePixel = 0
     overlay.ZIndex = 10
     overlay.Visible = false
+    overlay.Active = true  -- Block input to game while config panel is open
     overlay.Parent = parent
 
     panelFrame = Instance.new("Frame")
