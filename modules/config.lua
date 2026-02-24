@@ -109,4 +109,74 @@ function Config.RemoveFromWhitelist(username)
     return false
 end
 
+-- =============================================
+-- PERSISTENCE (export/apply for config.json)
+-- =============================================
+-- Keys saved to file (excludes VERSION, MAX_SLOTS, and functions)
+Config.PERSIST_KEYS = {
+    "MINIMUM_LEVEL", "REQUIRED_PERCENT", "MIN_BEES_REQUIRED",
+    "CHECK_INTERVAL", "GRACE_PERIOD", "SCAN_TIMEOUT", "BAN_COOLDOWN",
+    "MAX_PLAYERS", "WHITELIST",
+    "WEBHOOK_ENABLED", "WEBHOOK_URL",
+    "DRY_RUN", "AUTO_START", "SHOW_GUI", "USE_KICK",
+    "MOBILE_MODE", "LOG_LEVEL",
+    "DISCORD_USER_ID", "MOBILE_RENOTIFY_INTERVAL",
+}
+
+--- Export current config to a plain table for JSON encode. Copies whitelist by value.
+function Config.ExportToTable()
+    local t = {}
+    for _, key in ipairs(Config.PERSIST_KEYS) do
+        local v = Config[key]
+        if key == "WHITELIST" then
+            t[key] = {}
+            for _, name in ipairs(v or {}) do
+                table.insert(t[key], name)
+            end
+        else
+            t[key] = v
+        end
+    end
+    return t
+end
+
+--- Apply a table (e.g. from JSON decode) onto Config. Ignores unknown keys and invalid types.
+function Config.ApplyFromTable(tbl)
+    if type(tbl) ~= "table" then return end
+    for _, key in ipairs(Config.PERSIST_KEYS) do
+        local v = tbl[key]
+        if v == nil then continue end
+        if key == "WHITELIST" then
+            if type(v) == "table" then
+                Config.WHITELIST = {}
+                for _, name in ipairs(v) do
+                    if type(name) == "string" and #name > 0 then
+                        table.insert(Config.WHITELIST, name)
+                    end
+                end
+            end
+        elseif key == "MOBILE_MODE" then
+            if v == true or v == false then
+                Config.MOBILE_MODE = v
+            elseif v == nil then
+                Config.MOBILE_MODE = nil
+            end
+        elseif key == "MINIMUM_LEVEL" or key == "MIN_BEES_REQUIRED" or key == "MAX_PLAYERS" then
+            local n = tonumber(v)
+            if n and n >= 0 then Config[key] = math.floor(n) end
+        elseif key == "REQUIRED_PERCENT" then
+            local n = tonumber(v)
+            if n and n >= 0 and n <= 1 then Config[key] = n end
+        elseif key == "CHECK_INTERVAL" or key == "GRACE_PERIOD" or key == "SCAN_TIMEOUT" or key == "BAN_COOLDOWN" or key == "MOBILE_RENOTIFY_INTERVAL" then
+            local n = tonumber(v)
+            if n and n >= 0 then Config[key] = math.floor(n) end
+        elseif key == "WEBHOOK_ENABLED" or key == "DRY_RUN" or key == "AUTO_START" or key == "SHOW_GUI" or key == "USE_KICK" then
+            if type(v) == "boolean" then Config[key] = v end
+        elseif key == "WEBHOOK_URL" or key == "LOG_LEVEL" or key == "DISCORD_USER_ID" then
+            if type(v) == "string" then Config[key] = v end
+        end
+    end
+    Config.MAX_SLOTS = Config.HIVE_SIZE_X * Config.HIVE_SIZE_Y
+end
+
 return Config

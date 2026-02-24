@@ -12,7 +12,8 @@ A modular Roblox Lua script for **Bee Swarm Simulator** private server monitorin
 ### Module Structure
 ```
 modules/
-├── config.lua          # Configuration, whitelist, mobile & Discord notification settings
+├── config.lua          # Configuration, whitelist, mobile & Discord notification settings; ExportToTable/ApplyFromTable for persistence
+├── persist.lua         # Config persistence: BSS-Monitor/config.json via executor file API fallback (syn/fluxus/global)
 ├── logger.lua          # Centralized logging with level-based console filtering & in-memory buffer
 ├── scanner.lua         # Hive scanning, bee level/gifted detection, requirement checking
 ├── chat.lua            # Chat command sender (VirtualInputManager), command queue with 1s delay
@@ -29,7 +30,8 @@ modules/
     ├── theme.lua       # Color palette (Theme.C table) & layout size constants
     ├── helpers.lua     # UI primitives: addCorner, addStroke, addShadow, label, sectionHeader
     ├── components.lua  # UI component builders: toggle button, title bar, player/banned entries, footer
-    └── init.lua        # GUI orchestrator: Create(), Update*(), collapse, drag, live refresh timer
+    ├── configpanel.lua # Config GUI: Settings panel (Requirements, Timing, Discord, Behavior, Whitelist, Advanced), Save to config.json
+    └── init.lua        # GUI orchestrator: Create(), Update*(), collapse, drag, gear → ConfigPanel, live refresh timer
 ```
 
 ### Entry Points
@@ -39,12 +41,13 @@ modules/
 ### Module Loading Order (loader.lua)
 1. Logger (standalone, no deps)
 2. Config (standalone)
-3. Scanner (standalone)
-4. Chat (standalone)
-5. Monitor sub-modules: state → ban → cycle → init
-6. Webhook sub-modules: http → embeds → init
-7. GUI sub-modules: theme → helpers → components → init
-8. Initialization chain (see below)
+3. Persist (standalone; executor file API)
+4. Scanner (standalone)
+5. Chat (standalone)
+6. Monitor sub-modules: state → ban → cycle → init
+7. Webhook sub-modules: http → embeds → init
+8. GUI sub-modules: theme → helpers → components → configpanel → init
+9. Initialization chain (see below)
 
 ### Initialization Chain
 ```lua
@@ -55,7 +58,8 @@ WebhookEmbeds.Init(WebhookHttp)
 Webhook.Init(WebhookHttp, WebhookEmbeds)
 GUIHelpers.Init(GUITheme)
 GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat)
-GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents)
+ConfigPanel.Init(GUITheme, GUIHelpers, Config)
+GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents, ConfigPanel)
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, MonitorCycle)
   └→ Ban.Init(State, Config, Scanner, Webhook, Chat, GUI)
   └→ Cycle.Init(State, Ban, Config, Scanner, Webhook, GUI, Chat)
@@ -95,8 +99,14 @@ _G.BSSMonitor.testChat()              -- Send test chat message
 _G.BSSMonitor.testWebhook()           -- Send test webhook
 
 -- Direct module access
-_G.BSSMonitor.Config, .Scanner, .Webhook, .Chat, .GUI, .Monitor
+_G.BSSMonitor.Config, .Persist, .ConfigPanel, .Scanner, .Webhook, .Chat, .GUI, .Monitor
 ```
+
+### Config persistence (v2)
+- **Path:** `BSS-Monitor/config.json` (folder `BSS-Monitor` created when possible).
+- **On load:** Loader reads persisted config (if present), `HttpService:JSONDecode`, then `Config.ApplyFromTable(decoded)` before applying `_G.BSSMonitorConfig`.
+- **On save:** Config GUI Save button calls `Config.ExportToTable()`, `HttpService:JSONEncode`, then `Persist.Save(json)`. If executor has no file APIs, status shows "Config not saved — file access not available".
+- **Persist module:** Fallback chain `syn.*`, `fluxus.*`, global `writefile`/`readfile`/`makefolder`/`isfile`; all behind pcall. No server/DataStore APIs.
 
 ### Data Flow
 ```
@@ -384,7 +394,7 @@ Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, Moni
 ### GUI Details
 Collapsible panel with dark theme, positioned on left side of screen. Key features:
 - **Toggle button**: Bee emoji (🐝) in bottom-right corner, shows/hides main panel
-- **Title bar**: Golden accent, "BSS Monitor" with player count, collapse arrow. Drag restricted to title bar only.
+- **Title bar**: Golden accent, "BSS Monitor" with player count, **Settings (gear)** button opens Config GUI, collapse arrow. Drag restricted to title bar only.
 - **Stats row**: Player count (X/6) + status indicator (ACTIVE/PAUSED) with platform emoji
 - **Player list**: Per-player entries showing name, avg level, percentage at required level. Color-coded: green (pass), red (fail), orange (grace/too few bees), blue (whitelisted/scanning)
 - **Scanning state**: Displays "SCANNING" (no dots) in blue while hive data is loading

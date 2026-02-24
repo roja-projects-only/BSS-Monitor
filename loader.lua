@@ -119,6 +119,7 @@ local Logger = loadModule("logger")
 
 -- Load all modules
 local Config = loadModule("config")
+local Persist = loadModule("persist")
 local Scanner = loadModule("scanner")
 local Chat = loadModule("chat")
 
@@ -137,6 +138,7 @@ local Webhook = loadModule("webhook/init")
 local GUITheme = loadModule("gui/theme")
 local GUIHelpers = loadModule("gui/helpers")
 local GUIComponents = loadModule("gui/components")
+local ConfigPanel = loadModule("gui/configpanel")
 local GUI = loadModule("gui/init")
 
 -- Validate critical modules (GUI is optional)
@@ -145,7 +147,19 @@ if not Config or not Scanner or not Monitor or not MonitorState or not Logger th
     return
 end
 
--- Apply custom config if provided
+-- Apply persisted config from BSS-Monitor/config.json (if present)
+if Persist and Persist.HasSavedConfig and Persist.Load then
+    local content, loadErr = Persist.Load()
+    if content and #content > 0 then
+        local HttpService = game:GetService("HttpService")
+        local ok, decoded = pcall(function() return HttpService:JSONDecode(content) end)
+        if ok and decoded and type(decoded) == "table" and Config.ApplyFromTable then
+            Config.ApplyFromTable(decoded)
+        end
+    end
+end
+
+-- Apply custom config if provided (overrides persisted)
 if customConfig then
     for key, value in pairs(customConfig) do
         Config[key] = value
@@ -161,7 +175,8 @@ if WebhookEmbeds then WebhookEmbeds.Init(WebhookHttp) end
 if Webhook then Webhook.Init(WebhookHttp, WebhookEmbeds) end
 if GUIHelpers then GUIHelpers.Init(GUITheme) end
 if GUIComponents then GUIComponents.Init(GUITheme, GUIHelpers, Config, Monitor, Chat) end
-if GUI then GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents) end
+if ConfigPanel then ConfigPanel.Init(GUITheme, GUIHelpers, Config) end
+if GUI then GUI.Init(Config, Monitor, Chat, GUITheme, GUIHelpers, GUIComponents, ConfigPanel) end
 Monitor.Init(Config, Scanner, Webhook, Chat, GUI, MonitorState, MonitorBan, MonitorCycle)
 
 -- Create GUI if enabled
@@ -181,6 +196,8 @@ end
 -- Store in _G for access
 _G.BSSMonitor = {
     Config = Config,
+    Persist = Persist,
+    ConfigPanel = ConfigPanel,
     Scanner = Scanner,
     Webhook = Webhook,
     Chat = Chat,

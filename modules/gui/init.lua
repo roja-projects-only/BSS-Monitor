@@ -40,14 +40,16 @@ local Chat = nil
 local Theme = nil
 local H = nil       -- Helpers
 local Comp = nil    -- Components
+local ConfigPanel = nil
 
-function GUI.Init(config, monitor, chat, theme, helpers, components)
+function GUI.Init(config, monitor, chat, theme, helpers, components, configPanel)
     Config = config
     Monitor = monitor
     Chat = chat
     Theme = theme
     H = helpers
     Comp = components
+    ConfigPanel = configPanel
     return GUI
 end
 
@@ -102,6 +104,27 @@ function GUI.Create()
     GUI.StatusDot = titleParts.StatusDot
     GUI.TitleCountLabel = titleParts.TitleCountLabel
     GUI.CollapseButton = titleParts.CollapseButton
+
+    -- Settings (gear) button - opens Config GUI
+    local titleBar = panel:FindFirstChild("TitleBar")
+    if titleBar and ConfigPanel and ConfigPanel.Show then
+        local gearBtn = Instance.new("TextButton")
+        gearBtn.Name = "SettingsBtn"
+        gearBtn.Size = UDim2.new(0, 28, 0, 28)
+        gearBtn.Position = UDim2.new(1, -PADDING - 28 - 36, 0.5, -14)
+        gearBtn.BackgroundColor3 = C.elevated
+        gearBtn.BorderSizePixel = 0
+        gearBtn.Text = "\xE2\x9A\x99" -- gear icon
+        gearBtn.TextColor3 = C.textSec
+        gearBtn.TextSize = 14
+        gearBtn.Font = Enum.Font.Gotham
+        gearBtn.AutoButtonColor = true
+        gearBtn.Parent = titleBar
+        H.addCorner(gearBtn, 6)
+        gearBtn.MouseButton1Click:Connect(function()
+            ConfigPanel.Show(screenGui)
+        end)
+    end
 
     -- Content area
     local content = Instance.new("Frame")
